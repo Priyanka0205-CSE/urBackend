@@ -54,6 +54,16 @@ module.exports.createCollectionSchema = z.object({
     })).optional()
 });
 
+// Create Collection Schema (API Key based)
+module.exports.createSchemaApiKeySchema = z.object({
+    name: z.string().min(1, "Collection Name is required"),
+    fields: z.array(z.object({
+        name: z.string(),
+        type: z.enum(['string', 'number', 'boolean', 'date', 'String', 'Number', 'Boolean', 'Date']),
+        required: z.boolean().optional()
+    })).optional()
+});
+
 module.exports.sanitize = (obj) => {
     const clean = {};
     for (const key in obj) {

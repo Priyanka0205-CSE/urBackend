@@ -71,13 +71,14 @@ const projectRoute = require('./routes/projects');
 const dataRoute = require('./routes/data');
 const userAuthRoute = require('./routes/userAuth');
 const storageRoute = require('./routes/storage');
+const schemaRoute = require('./routes/schemas');
 
 // ROUTES SETUP 
 app.use('/api/auth', dashboardLimiter, authRoute); // Developer Auth
 app.use('/api/projects', dashboardLimiter, projectRoute); // Project Mgmt
 app.use('/api/userAuth', limiter, logger, userAuthRoute);
 app.use('/api/data', limiter, cors(adminCorsOptions), logger, dataRoute);
-app.use('/api/data', limiter, cors(adminCorsOptions), logger, dataRoute);
+app.use('/api/schemas', limiter, cors(adminCorsOptions), logger, schemaRoute);
 app.use('/api/storage', limiter, cors(adminCorsOptions), logger, storageRoute);
 
 app.get('/api/server-ip', async (req, res) => {
