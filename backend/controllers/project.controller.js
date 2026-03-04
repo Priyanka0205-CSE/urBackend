@@ -700,7 +700,8 @@ module.exports.updateProject = async (req, res) => {
         if (!project) return res.status(404).json({ error: "Project not found." });
         
         await deleteProjectById(project._id.toString());
-        await setProjectById(project._id.toString(), project);
+        await deleteProjectByApiKeyCache(project.publishableKey);
+        await deleteProjectByApiKeyCache(project.secretKey);
         
         res.json(project);
     } catch (err) {
