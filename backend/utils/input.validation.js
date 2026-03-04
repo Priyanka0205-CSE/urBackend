@@ -38,6 +38,13 @@ module.exports.onlyEmailSchema = z.object({
     email: z.string().email("Invalid email format")
 });
 
+module.exports.resetPasswordSchema = z.object({
+    email: z.string().email("Invalid email format"),
+    otp: z.string().min(6, "OTP is required"),
+    newPassword: z.string().min(6, "Password must be at least 6 characters").max(100, "Password is too long.")
+});
+
+
 module.exports.createProjectSchema = z.object({
     name: z.string().min(1, "Project name is required"),
     description: z.string().optional()
