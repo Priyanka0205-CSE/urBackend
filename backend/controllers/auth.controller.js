@@ -88,7 +88,7 @@ module.exports.login = async (req, res) => {
 
         // FIX 1: JWT now expires in 7 days
         const token = jwt.sign(
-            { _id: dev._id, isVerified: dev.isVerified },
+            { _id: dev._id, isVerified: dev.isVerified, maxProjects: dev.maxProjects },
             process.env.JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
         );
@@ -187,7 +187,7 @@ module.exports.verifyOtp = async (req, res) => {
 
         // FIX 1: JWT with expiry
         const token = jwt.sign(
-            { _id: existingUser._id, isVerified: true },
+            { _id: existingUser._id, isVerified: true, maxProjects: existingUser.maxProjects },
             process.env.JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
         );

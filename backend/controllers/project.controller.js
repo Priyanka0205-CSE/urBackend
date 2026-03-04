@@ -1,5 +1,6 @@
 const mongoose = require("mongoose")
 const Project = require("../models/Project")
+const Developer = require("../models/Developer")
 const Log = require("../models/Log")
 const { getStorage } = require("../utils/storage.manager");
 const { randomUUID } = require("crypto");
@@ -32,14 +33,17 @@ module.exports.createProject = async (req, res) => {
 
         // --- PROJECT LIMIT CHECK ---
         const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-        const MAX_PROJECTS = 3;
+        
+        // Fetch current developer to get dynamic maxProjects limit
+        const dev = await Developer.findById(req.user._id);
+        const MAX_PROJECTS = dev?.maxProjects || 3;
 
         const isUserAdmin = req.user.email === ADMIN_EMAIL;
         const projectCount = await Project.countDocuments({ owner: req.user._id });
 
         if (!isUserAdmin && projectCount >= MAX_PROJECTS) {
             return res.status(403).json({ 
-                error: `Project limit reached. Free tier allows up to ${MAX_PROJECTS} projects.`,
+                error: `Project limit reached. Your current plan allows up to ${MAX_PROJECTS} projects.`,
                 limit: MAX_PROJECTS,
                 current: projectCount
             });
