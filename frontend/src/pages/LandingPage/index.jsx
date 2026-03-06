@@ -115,7 +115,7 @@ function LandingPage() {
             <nav className={`nav-glass ${!isNavVisible ? 'nav-hidden' : ''} ${scrolled ? 'nav-scrolled' : ''}`}>
                 <div className="nav-container">
                     <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                        <img src="/urBACKEND_NAV_LOGO (2).png" alt="urBackend Logo" style={{ height: '36px', width: 'auto' }} />
+                        <img src="/urBACKEND_NAV_LOGO (2).png" alt="urBackend Logo" style={{ height: '40px', width: 'auto' }} />
                     </div>
 
                     <div className="nav-links" style={{ display: window.innerWidth > 768 ? 'flex' : 'none', gap: '32px', alignItems: 'center', fontSize: '0.95rem', color: '#888', fontWeight: 500 }}>

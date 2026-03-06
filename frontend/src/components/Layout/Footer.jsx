@@ -13,7 +13,7 @@ export default function Footer() {
                     {/* Brand / Newsletter Column */}
                     <div className="footer-brand-col">
                         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                            <img src="/urBACKEND_NAV_LOGO (2).png" alt="urBackend Logo" style={{ height: '32px', width: 'auto' }} />
+                            <img src="/urBACKEND_NAV_LOGO (2).png" alt="urBackend Logo" style={{ height: '80px', width: 'auto' }} />
                         </div>
                         <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', maxWidth: '300px' }}>
                             The instant Backend-as-a-Service for frontend developers. Ship faster.
