@@ -7,6 +7,7 @@ const redis = require('../config/redis');
 const { authEmailQueue } = require('../queues/authEmailQueue');
 const { loginSchema, signupSchema, userSignupSchema, resetPasswordSchema, onlyEmailSchema, verifyOtpSchema, changePasswordSchema, sanitize } = require('../utils/input.validation');
 const { getConnection } = require('../utils/connection.manager');
+const { getCompiledModel } = require('../utils/injectModel');
 
 // FUNCTION - GET AUTH COLLECTION
 async function getAuthCollection(project) {
@@ -34,7 +35,7 @@ module.exports.signup = async (req, res) => {
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        const newUser = {
+        const newUserPayload = {
             username,
             email,
             password: hashedPassword,
@@ -43,7 +44,18 @@ module.exports.signup = async (req, res) => {
             createdAt: new Date()
         };
 
-        const result = await collection.insertOne(newUser);
+        // Validate against Mongoose Model
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (usersColConfig) {
+            const connection = await getConnection(project._id);
+            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+            const validationError = new Model(newUserPayload).validateSync();
+            if (validationError) {
+                return res.status(400).json({ error: validationError.message });
+            }
+        }
+
+        const result = await collection.insertOne(newUserPayload);
 
         await redis.set(`project:${project._id}:otp:verification:${email}`, otp, 'EX', 300);
 
@@ -155,7 +167,7 @@ module.exports.createAdminUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const newUser = {
+        const newUserPayload = {
             username,
             email,
             password: hashedPassword,
@@ -164,11 +176,22 @@ module.exports.createAdminUser = async (req, res) => {
             createdAt: new Date()
         };
 
-        const result = await collection.insertOne(newUser);
+        // Validate against Mongoose Model
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (usersColConfig) {
+            const connection = await getConnection(project._id);
+            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+            const validationError = new Model(newUserPayload).validateSync();
+            if (validationError) {
+                return res.status(400).json({ error: validationError.message });
+            }
+        }
+
+        const result = await collection.insertOne(newUserPayload);
 
         res.status(201).json({
             message: "User created successfully",
-            user: { _id: result.insertedId, email, username, createdAt: newUser.createdAt }
+            user: { _id: result.insertedId, email, username, createdAt: newUserPayload.createdAt }
         });
 
     } catch (err) {
@@ -312,7 +335,13 @@ module.exports.updateProfile = async (req, res) => {
         const tokenHeader = req.header('Authorization');
         if (!tokenHeader) return res.status(401).json({ error: "Access Denied: No Token Provided" });
         const token = tokenHeader.replace("Bearer ", "");
-        const decoded = jwt.verify(token, project.jwtSecret);
+        
+        let decoded;
+        try {
+            decoded = jwt.verify(token, project.jwtSecret);
+        } catch (err) {
+            return res.status(401).json({ error: "Access Denied: Invalid or expired token" });
+        }
 
         const username = req.body.username;
         if (!username || username.length < 3 || username.length > 50) {
@@ -341,7 +370,13 @@ module.exports.changePasswordUser = async (req, res) => {
         const tokenHeader = req.header('Authorization');
         if (!tokenHeader) return res.status(401).json({ error: "Access Denied: No Token Provided" });
         const token = tokenHeader.replace("Bearer ", "");
-        const decoded = jwt.verify(token, project.jwtSecret);
+        
+        let decoded;
+        try {
+            decoded = jwt.verify(token, project.jwtSecret);
+        } catch (err) {
+            return res.status(401).json({ error: "Access Denied: Invalid or expired token" });
+        }
 
         const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
 
@@ -403,6 +438,18 @@ module.exports.updateAdminUser = async (req, res) => {
         delete updateData._id;
 
         const sanitizedUpdateData = sanitize(updateData);
+
+        // Validate against Mongoose Model
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (usersColConfig) {
+            const connection = await getConnection(project._id);
+            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+            // We use { validateModifiedOnly: true } for updates
+            const validationError = new Model(sanitizedUpdateData).validateSync({ validateModifiedOnly: true });
+            if (validationError) {
+                return res.status(400).json({ error: validationError.message });
+            }
+        }
 
         const collection = await getAuthCollection(project);
 

@@ -58,6 +58,48 @@ const DynamicUserForm = ({ schema, formData, onChange, isEdit = false }) => {
                                 value={formData[field.key] ? new Date(formData[field.key]).toISOString().split('T')[0] : ''}
                                 onChange={(e) => onChange(field.key, e.target.value)}
                             />
+                        ) : (field.type === 'Object' || field.type === 'Array') ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <textarea
+                                    className="input-field"
+                                    style={{ 
+                                        minHeight: '100px', 
+                                        fontFamily: 'monospace', 
+                                        fontSize: '0.85rem',
+                                        resize: 'vertical',
+                                        borderColor: formData[`_error_${field.key}`] ? '#ef4444' : 'var(--color-border)'
+                                    }}
+                                    placeholder={field.type === 'Object' ? '{ "key": "value" }' : '[ "item1", "item2" ]'}
+                                    value={typeof formData[field.key] === 'string' ? formData[field.key] : JSON.stringify(formData[field.key] ?? (field.type === 'Object' ? {} : []), null, 2)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        onChange(field.key, val); // Store raw string during edit
+                                        try {
+                                            const parsed = JSON.parse(val);
+                                            onChange(`_error_${field.key}`, null);
+                                            onChange(field.key, parsed); // Store parsed value if valid
+                                        } catch (err) {
+                                            onChange(`_error_${field.key}`, "Invalid JSON format");
+                                        }
+                                    }}
+                                />
+                                {formData[`_error_${field.key}`] && (
+                                    <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>{formData[`_error_${field.key}`]}</span>
+                                )}
+                            </div>
+                        ) : field.type === 'Ref' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <input
+                                    type="text"
+                                    className="input-field"
+                                    placeholder="Enter reference document ID"
+                                    value={formData[field.key] || ''}
+                                    onChange={(e) => onChange(field.key, e.target.value)}
+                                />
+                                <small style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                    Enter the <code>_id</code> of the document you want to reference.
+                                </small>
+                            </div>
                         ) : (
                             <input
                                 type={field.key === 'password' ? 'password' : 'text'}
