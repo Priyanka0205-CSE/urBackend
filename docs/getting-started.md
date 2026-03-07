@@ -13,7 +13,11 @@ Head over to the [urBackend Dashboard](https://urbackend.bitbros.in) and create 
 
 ## 2. Your First Request
 
-You can start pushing data immediately to any collection. You don't even need to pre-define a schema—urBackend will create the collection on the fly when you first POST data to it.
+Before pushing data, your **Collections must be pre-configured** in the dashboard. While urBackend offers flexible schema-less options, the collection itself must be registered so your API keys know where to route the data.
+
+To get started, navigate to the **Database** tab in your dashboard and click **"Create Collection"**. Specify a name (e.g., `products`) to initialize your endpoint. 
+
+> **💡 Pro Tip**: You can define a detailed schema during creation, or simply create the collection and start POSTing arbitrary JSON right away—urBackend will handle the rest.
 
 > **⚠️ Note**: Write operations (POST, PUT, DELETE) require your **Secret Key** and should only be performed from a secure backend environment, never from client-side code.
 
