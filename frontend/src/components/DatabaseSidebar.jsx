@@ -15,14 +15,17 @@ export default function DatabaseSidebar({
     project,
     navigate,
     projectId,
+    showUsers = false,
     onRequestDelete
 }) {
+    const visibleCollections = collections.filter(c => c.name !== 'users' || showUsers);
+
     return (
         <aside className={`db-sidebar ${isSidebarOpen ? "open" : ""}`}>
             <div className="sidebar-header-area">
                 <h3 className="section-title">
                     COLLECTIONS
-                    <span className="badge">{collections.length}</span>
+                    <span className="badge">{visibleCollections.length}</span>
                 </h3>
                 <div className="sidebar-actions">
                     <button
@@ -42,7 +45,7 @@ export default function DatabaseSidebar({
             </div>
 
             <div className="collection-list">
-                {collections.length === 0 ? (
+                {visibleCollections.length === 0 ? (
                     <div className="empty-sidebar">
                         <p>No collections yet.</p>
                         <button
@@ -55,7 +58,7 @@ export default function DatabaseSidebar({
                         </button>
                     </div>
                 ) : (
-                    collections.map((c) => (
+                    visibleCollections.map((c) => (
                         <div
                             key={c._id}
                             onClick={() => setActiveCollection(c)}

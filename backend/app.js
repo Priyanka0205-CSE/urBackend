@@ -18,6 +18,7 @@ const { getPublicIp } = require('./utils/network');
 
 // Initialize Queue Workers
 require('./queues/emailQueue');
+require('./queues/authEmailQueue');
 
 // Middleware (We apply admin options globally except where overridden via dynamic handling)
 app.use(express.json());
@@ -78,9 +79,7 @@ const schemaRoute = require('./routes/schemas');
 const releaseRoute = require('./routes/releases');
 
 // ROUTES SETUP 
-app.use('/api/auth/login', cors(adminCorsOptions), authLimiter);           // Strict limiter on login
-app.use('/api/auth/register', cors(adminCorsOptions), authLimiter);        // Strict limiter on register
-app.use('/api/auth', cors(adminCorsOptions), dashboardLimiter, authRoute); // Developer Auth (general)
+app.use('/api/auth', cors(adminCorsOptions), authRoute); // Developer Auth (general)
 app.use('/api/projects', cors(adminCorsOptions), dashboardLimiter, projectRoute); // Project Mgmt
 app.use('/api/userAuth', cors(adminCorsOptions), limiter, logger, userAuthRoute);
 app.use('/api/releases', cors(adminCorsOptions), releaseRoute);

@@ -126,4 +126,85 @@ async function sendReleaseEmail(email, { version, title, content }) {
     }
 }
 
-module.exports = { sendOtp, sendReleaseEmail };
+    // FUNCTION - SEND AUTH OTP EMAIL
+async function sendAuthOtpEmail(email, { otp, type, pname }) {
+    const rawPname = pname || "urBackend";
+
+    let safeEmailHandle = rawPname.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if (safeEmailHandle.length < 3) {
+        safeEmailHandle = "urbackend";
+    }
+    safeEmailHandle = safeEmailHandle.substring(0, 30);
+
+    const safeProjectNameHtml = escapeHtml(rawPname);
+
+    const safeDisplayName = rawPname.replace(/[\r\n]/g, '').trim();
+    const finalDisplayName = /^[a-zA-Z0-9 ]+$/.test(safeDisplayName) 
+        ? safeDisplayName 
+        : `"${safeDisplayName.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    
+    const isVerify = type === 'verification';
+    const subject = isVerify ? "Verify your account" : "Reset your password";
+    const header = isVerify ? "Verify your email address" : "Reset your password";
+    const desc = isVerify 
+        ? "Use the following code to complete your verification process." 
+        : "Use the following code to reset your password.";
+
+    try {
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #ffffff; color: #111111; margin: 0; padding: 0; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+                    .logo { margin-bottom: 32px; font-weight: 800; font-size: 24px; letter-spacing: -0.03em; color: #111; }
+                    h1 { font-size: 24px; font-weight: 700; line-height: 1.2; margin-bottom: 16px; letter-spacing: -0.02em; }
+                    .content { font-size: 16px; line-height: 1.6; color: #444; margin-bottom: 32px; }
+                    .otp-box { display: inline-block; padding: 12px 24px; background: #f4f4f5; border: 1px solid #e4e4e7; color: #111; border-radius: 8px; font-size: 28px; font-weight: 700; letter-spacing: 4px; margin-bottom: 32px; font-family: monospace; }
+                    .footer { margin-top: 64px; padding-top: 32px; border-top: 1px solid #eeeeee; font-size: 13px; color: #888888; }
+                    .footer p { margin: 4px 0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="logo">${safeProjectNameHtml}</div>
+                    <h1>${header}</h1>
+                    <div class="content">
+                        ${desc} This code will expire in 5 minutes.
+                    </div>
+                    <div class="otp-box">${otp}</div>
+                    <div class="content">
+                        If you didn't request this code, you can safely ignore this email.
+                    </div>
+                    <div class="footer">
+                        <p>© ${new Date().getFullYear()} urBackend Inc. • Developer platform.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+
+
+        const fromAddress = `${finalDisplayName} <${safeEmailHandle}.urbackend@apps.bitbros.in>`;
+        const { data, error } = await resend.emails.send({
+            from: fromAddress,
+            to: email,
+            subject: subject,
+            html: htmlContent,
+            replyTo: fromAddress,
+        });
+
+        if (error) {
+            console.error("[Resend Error]", error);
+            throw new Error(error.message || "Failed to send email");
+        }
+        return { data };
+    } catch (error) {
+        console.error("[Auth Queue Email Service Error]", error);
+        throw error;
+    }
+}
+
+module.exports = { sendOtp, sendReleaseEmail, sendAuthOtpEmail };

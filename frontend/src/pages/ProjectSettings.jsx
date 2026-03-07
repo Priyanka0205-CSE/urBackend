@@ -66,11 +66,6 @@ export default function ProjectSettings() {
     if (deleteConfirm !== project.name)
       return toast.error("Project name does not match");
 
-    // // if (
-    // //   !confirm("Final warning: This will delete the project and all its data.")
-    // // )
-    //   return;
-
     try {
       await axios.delete(`${API_URL}/api/projects/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` },

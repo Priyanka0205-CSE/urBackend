@@ -13,11 +13,24 @@ const {
 } = require('../controllers/auth.controller');
 
 
+const { authLimiter } = require('../middleware/auth_limiter');
+const rateLimit = require('express-rate-limit');
+const dashboardLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    message: { error: "Dashboard usage limit exceeded. Slow down!" },
+    skip: (req) => process.env.NODE_ENV === 'development',
+});
+
+
 // REGISTER ROUTE
-router.post('/register', register);
+router.post('/register', authLimiter, register);
 
 // LOGIN ROUTE
-router.post('/login', login);
+router.post('/login', authLimiter, login);
+
+// Apply more relaxed dashboard limiter to the rest
+router.use(dashboardLimiter);
 
 // CHANGE PASSWORD (Protected)
 router.put('/change-password', authorization, changePassword);

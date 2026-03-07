@@ -27,6 +27,7 @@ import {
 
 import { API_URL } from "../config";
 
+// FUNCTION - DATABASE COMPONENT
 export default function Database() {
   const { projectId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,16 +43,12 @@ export default function Database() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  //used showModal to open the Confirmation model
-  //used showModal to open the Confirmation model
   const [showModal, setShowModal] = useState(false);
-  //keeping track of the selected record in the collection
   const [selectedId, setSelectedId] = useState(null);
   const [collectionToDelete, setCollectionToDelete] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null); // For detail drawer
   const [editingRecord, setEditingRecord] = useState(null);
 
-  // --- QUERY ENGINE STATES ---
   const [queryParams, setQueryParams] = useState({
       page: 1,
       limit: 50,
@@ -65,6 +62,7 @@ export default function Database() {
     setSelectedId(id);
   };
 
+// DELETE REQ FOR COLLECTION
   const handleDeleteCollection = async (collectionName) => {
     try {
       await axios.delete(
@@ -89,7 +87,7 @@ export default function Database() {
       toast.error(err.response?.data?.error || "Failed to delete collection");
     }
   };
-  // Fetch Project & Collections
+// FUNCTION - FETCH PROJECT & COLLECTIONS
   useEffect(() => {
     const fetchProject = async () => {
       try {
@@ -105,8 +103,13 @@ export default function Database() {
             (c) => c.name === queryCollection
           );
           if (found) setActiveCollection(found);
-        } else if (res.data.collections.length > 0) {
-          setActiveCollection(res.data.collections[0]);
+        } else {
+          const filtered = res.data.collections.filter(c => c.name !== 'users');
+          if (filtered.length > 0) {
+            setActiveCollection(filtered[0]);
+          } else if (res.data.collections.length > 0) {
+            setActiveCollection(res.data.collections[0]);
+          }
         }
       } catch {
         toast.error("Failed to load project");
@@ -115,17 +118,16 @@ export default function Database() {
     fetchProject();
   }, [projectId, token, searchParams]);
 
+// FUNCTION - FETCH DATA (PAGINATED/FILTERED)
   const fetchData = useCallback(async () => {
     if (!activeCollection) return;
     setLoadingData(true);
     try {
-      // Build query string from state
       let queryStr = `?page=${queryParams.page}&limit=${queryParams.limit}`;
       if (queryParams.sort) {
         queryStr += `&sort=${queryParams.sort}`;
       }
       
-      // Append advanced filters
       queryParams.filters.forEach(filter => {
          if (filter.field && filter.operator && filter.value !== '') {
             if (filter.operator === '=') {
@@ -282,6 +284,7 @@ export default function Database() {
         project={project}
         navigate={navigate}
         projectId={projectId}
+        showUsers={activeCollection?.name === 'users'}
         onRequestDelete={setCollectionToDelete}
       />
 

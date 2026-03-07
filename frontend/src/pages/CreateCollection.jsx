@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -8,7 +8,7 @@ import { API_URL } from '../config';
 
 const MAX_DEPTH = 3;
 
-// Generate a stable unique ID for React keys
+// FUNCTION - NEXT FIELD ID
 let _fieldIdCounter = 0;
 const nextFieldId = () => `field_${Date.now()}_${_fieldIdCounter++}`;
 
@@ -20,11 +20,12 @@ function createEmptyField() {
     return { _id: nextFieldId(), key: '', type: 'String', required: false };
 }
 
-// Recursive FieldRow component
+// FUNCTION - FIELD ROW COMPONENT
 function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
     const [expanded, setExpanded] = useState(true);
 
     const handleChange = (prop, value) => {
+        if (field.locked) return;
         const updated = { ...field, [prop]: value };
 
         // Reset sub-properties when type changes
@@ -59,7 +60,6 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
         onChange(index, { ...field, fields: newFields });
     };
 
-    // Array items sub-field handlers
     const handleItemsChange = (prop, value) => {
         const updatedItems = { ...field.items, [prop]: value };
         if (prop === 'type') {
@@ -100,7 +100,6 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
 
     return (
         <div style={{ marginLeft: `${indent}px` }}>
-            {/* Main field row */}
             <div className="schema-field-row" style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '10px 12px', marginBottom: '4px',
@@ -127,22 +126,27 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                     type="text"
                     placeholder="field_name"
                     value={field.key}
+                    disabled={field.locked}
                     onChange={(e) => handleChange('key', e.target.value)}
                     className="input-field"
                     style={{
                         flex: 2, border: 'none', background: 'transparent',
-                        padding: '4px 0', fontSize: '0.9rem'
+                        padding: '4px 0', fontSize: '0.9rem',
+                        opacity: field.locked ? 0.6 : 1,
+                        cursor: field.locked ? 'not-allowed' : 'text'
                     }}
                 />
 
                 {/* Type selector */}
                 <select
                     value={field.type}
+                    disabled={field.locked}
                     onChange={(e) => handleChange('type', e.target.value)}
                     className="input-field"
                     style={{
                         flex: 1, border: 'none', background: 'transparent',
-                        padding: '4px 0', cursor: 'pointer', fontSize: '0.9rem'
+                        padding: '4px 0', cursor: field.locked ? 'not-allowed' : 'pointer', fontSize: '0.9rem',
+                        opacity: field.locked ? 0.6 : 1
                     }}
                 >
                     {availableTypes.map(t => (
@@ -154,10 +158,12 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                 <input
                     type="checkbox"
                     checked={field.required}
+                    disabled={field.locked}
                     onChange={(e) => handleChange('required', e.target.checked)}
                     style={{
                         accentColor: 'var(--color-primary)',
-                        transform: 'scale(1.1)', cursor: 'pointer', flexShrink: 0
+                        transform: 'scale(1.1)', cursor: field.locked ? 'not-allowed' : 'pointer', flexShrink: 0,
+                        opacity: field.locked ? 0.6 : 1
                     }}
                 />
 
@@ -165,8 +171,15 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                 <button
                     type="button"
                     onClick={() => onRemove(index)}
+                    disabled={field.locked}
                     className="btn btn-ghost"
-                    style={{ color: 'var(--color-text-muted)', padding: '4px', flexShrink: 0 }}
+                    style={{ 
+                        color: 'var(--color-text-muted)', 
+                        padding: '4px', 
+                        flexShrink: 0,
+                        opacity: field.locked ? 0.3 : 1,
+                        cursor: field.locked ? 'not-allowed' : 'pointer'
+                    }}
                 >
                     <Trash2 size={15} />
                 </button>
@@ -300,7 +313,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
     );
 }
 
-// Strip internal _id fields before sending to API
+// FUNCTION - CLEAN FIELDS FOR API
 function cleanFieldsForApi(fields) {
     return fields.map(f => {
         const { _id, ...clean } = f;
@@ -313,17 +326,35 @@ function cleanFieldsForApi(fields) {
 }
 
 
+// FUNCTION - CREATE COLLECTION COMPONENT
 function CreateCollection() {
     const { projectId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { token, user } = useAuth();
 
-    const [name, setName] = useState('');
-    const [fields, setFields] = useState([
-        { ...createEmptyField(), key: 'username', type: 'String', required: true },
-        { ...createEmptyField(), key: 'email', type: 'String', required: true },
-        { ...createEmptyField(), key: 'password', type: 'String', required: true },
-    ]);
+    const queryParams = new URLSearchParams(location.search);
+    const initialName = queryParams.get('name')?.trim().toLowerCase() || '';
+
+    const [name, setName] = useState(initialName === 'users' ? 'users' : initialName);
+
+    // Default fields for a new collection
+    // If it's a "users" collection, we provide the essential Auth fields
+    const getInitialFields = () => {
+        if (initialName === 'users') {
+            return [
+                { ...createEmptyField(), key: 'email', type: 'String', required: true, locked: true },
+                { ...createEmptyField(), key: 'password', type: 'String', required: true, locked: true },
+                { ...createEmptyField(), key: 'username', type: 'String', required: false },
+                { ...createEmptyField(), key: 'emailVerified', type: 'Boolean', required: false },
+            ];
+        }
+        return [
+            { ...createEmptyField(), key: 'name', type: 'String', required: true }
+        ];
+    };
+
+    const [fields, setFields] = useState(getInitialFields());
     const [loading, setLoading] = useState(false);
     const [collections, setCollections] = useState([]);
 
@@ -363,14 +394,27 @@ function CreateCollection() {
             return;
         }
 
-        if (!name) return toast.error("Collection name is required");
+        const normalizedName = name.trim().toLowerCase();
+        if (!normalizedName) return toast.error("Collection name is required");
+        if (initialName === 'users' && normalizedName !== 'users') {
+            return toast.error("The 'users' collection name cannot be changed.");
+        }
+
         if (fields.some(f => !f.key)) return toast.error("All fields must have a name");
+
+        if (normalizedName === 'users') {
+            const hasEmail = fields.find(f => f.key === 'email' && f.type === 'String' && f.required);
+            const hasPassword = fields.find(f => f.key === 'password' && f.type === 'String' && f.required);
+            if (!hasEmail || !hasPassword) {
+                return toast.error("The 'users' collection MUST have 'email' and 'password' as required String fields.");
+            }
+        }
 
         setLoading(true);
         try {
             await axios.post(`${API_URL}/api/projects/collection`, {
                 projectId,
-                collectionName: name,
+                collectionName: normalizedName,
                 schema: cleanFieldsForApi(fields)
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -405,9 +449,14 @@ function CreateCollection() {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        disabled={initialName === 'users'}
                         className="input-field"
+                        style={{
+                            cursor: initialName === 'users' ? 'not-allowed' : 'text',
+                            opacity: initialName === 'users' ? 0.7 : 1
+                        }}
                         placeholder="e.g. users, products, orders"
-                        autoFocus
+                        autoFocus={initialName !== 'users'}
                     />
                     <small style={{ color: 'var(--color-text-muted)', marginTop: '5px', display: 'block' }}>
                         This will be the name of your collection in the database.
@@ -427,7 +476,6 @@ function CreateCollection() {
                         </button>
                     </div>
 
-                    {/* Column header */}
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
                         padding: '6px 12px 6px 38px', marginBottom: '4px',

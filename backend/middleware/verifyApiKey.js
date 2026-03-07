@@ -21,6 +21,7 @@ module.exports = async (req, res, next) => {
         if (!project) {
             project = await Project.findOne({ [keyField]: hashedApi })
                 .select(`
+                    name
                     owner
                     resources
                     collections
@@ -30,6 +31,7 @@ module.exports = async (req, res, next) => {
                     storageUsed
                     jwtSecret
                     allowedDomains
+                    isAuthEnabled
                 `)
                 .populate('owner', 'isVerified')
                 .lean();

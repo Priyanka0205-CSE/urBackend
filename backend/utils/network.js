@@ -1,10 +1,7 @@
-// Node 18+ has global fetch, so no import needed
-
 let cachedIp = null;
 let lastFetch = 0;
 
 async function getPublicIp() {
-    // Cache IP for 1 hour to avoid spamming the IP service
     const now = Date.now();
     if (cachedIp && (now - lastFetch < 3600000)) {
         return cachedIp;

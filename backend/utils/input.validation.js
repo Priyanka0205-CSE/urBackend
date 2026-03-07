@@ -2,7 +2,7 @@ const z = require("zod");
 
 module.exports.loginSchema = z.object({
     email: z.string()
-        .min(1, { message: "Email is required." }) // Ensure the input is not empty
+        .min(1, { message: "Email is required." })
         .email({ message: "Invalid email format." })
         .max(100, { message: "Email is too long." }),
     password: z.string()
@@ -13,7 +13,7 @@ module.exports.loginSchema = z.object({
 module.exports.signupSchema = z.object({
     username: z.string()
         .min(3, { message: "Username must be at least 3 characters." })
-        .max(30, { message: "Username is too long." }),
+        .max(50, { message: "Username must be between 3 and 50 characters." }),
 
     email: z.string()
         .min(1, { message: "Email is required." })
@@ -55,7 +55,7 @@ module.exports.createProjectSchema = z.object({
     description: z.string().optional()
 });
 
-// Recursive field schema with depth limiting (max 3 levels)
+// FUNCTION - BUILD FIELD SCHEMA ZOD
 const MAX_FIELD_DEPTH = 3;
 
 const buildFieldSchemaZod = (depth = 1) => {
@@ -73,7 +73,6 @@ const buildFieldSchemaZod = (depth = 1) => {
         if (data.type === 'Object' && (!data.fields || data.fields.length === 0)) return false;
         if (data.type === 'Array' && !data.items) return false;
         if (data.type === 'Ref' && !data.ref) return false;
-        // Block nesting beyond max depth
         if (depth >= MAX_FIELD_DEPTH && (data.type === 'Object' || (data.type === 'Array' && data.items?.type === 'Object'))) return false;
         return true;
     }, { message: "Invalid field configuration for the given type, or nesting depth exceeded (max 3 levels)." });
@@ -83,14 +82,14 @@ const buildFieldSchemaZod = (depth = 1) => {
 
 const fieldSchemaZod = buildFieldSchemaZod(1);
 
-// Create Collection Schema (Dashboard route)
+// SCHEMA - CREATE COLLECTION (DASHBOARD)
 module.exports.createCollectionSchema = z.object({
     projectId: z.string().min(1, "Project ID is required"),
     collectionName: z.string().min(1, "Collection Name is required"),
     schema: z.array(fieldSchemaZod).optional()
 });
 
-// Create Collection Schema (API Key based)
+// SCHEMA - CREATE COLLECTION (API)
 const buildApiFieldSchemaZod = (depth = 1) => {
     const base = z.object({
         name: z.string().min(1, "Field name is required"),
@@ -138,26 +137,19 @@ module.exports.sanitize = (obj) => {
 const emptyToUndefined = z.preprocess((val) => (val === "" || val === null ? undefined : val), z.string().optional());
 
 module.exports.updateExternalConfigSchema = z.object({
-    // DB URI: No .url() check because of mongodb+srv
     dbUri: z.preprocess((val) => (val === "" || val === null ? undefined : val),
         z.string().optional().refine(val => !val || val.startsWith('mongodb'), {
             message: "Invalid Database URI format."
         })
     ),
-
-    // Storage URL: Sirf tab check karega jab value empty na ho
     storageUrl: z.preprocess((val) => (val === "" || val === null ? undefined : val),
         z.string().url("Invalid Storage URL format").optional()
     ),
-
     storageKey: emptyToUndefined,
     storageProvider: z.enum(['supabase', 'aws', 'cloudinary']).optional()
 }).refine(data => {
-    // Condition 1: Agar Storage URL diya hai, toh Storage Key bhi honi chahiye
     if (data.storageUrl && !data.storageKey) return false;
-    // Condition 2: Agar Storage Key di hai, toh Storage URL bhi hona chahiye
     if (data.storageKey && !data.storageUrl) return false;
-    // Condition 3: Kam se kam ek cheez (DB ya Storage) poori honi chahiye
     return !!(data.dbUri || (data.storageUrl && data.storageKey));
 }, {
     message: "Provide either a DB URI or a complete Storage config (URL + Key)."
@@ -166,7 +158,7 @@ module.exports.updateExternalConfigSchema = z.object({
 module.exports.userSignupSchema = z.object({
     username: z.string()
         .min(3, { message: "Username must be at least 3 characters." })
-        .max(30, { message: "Username is too long." }).optional(),
+        .max(50, { message: "Username must be between 3 and 50 characters." }).optional(),
 
     email: z.string()
         .min(1, { message: "Email is required." })

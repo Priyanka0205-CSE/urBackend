@@ -218,7 +218,7 @@ function ProjectDetails() {
                     </div>
 
                     <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: '200px' }}>
-                        {project.collections.length === 0 ? (
+                        {project.collections.filter(c => c.name !== 'users').length === 0 ? (
                             <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
                                 <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'var(--color-bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem', border: '1px solid var(--color-border)' }}>
                                     <Layers size={24} color="#555" />
@@ -237,7 +237,7 @@ function ProjectDetails() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {project.collections.map(c => (
+                                        {project.collections.filter(c => c.name !== 'users').map(c => (
                                             <tr key={c._id} className="collection-row" onClick={() => navigate(`/project/${projectId}/database?collection=${c.name}`)}>
                                                 <td style={{ padding: '16px', fontWeight: 500, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                     <Database size={16} color="var(--color-text-muted)" className="row-icon" /> {c.name}

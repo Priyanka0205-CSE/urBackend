@@ -49,6 +49,7 @@ const projectSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    isAuthEnabled: { type: Boolean, default: false },
     collections: [collectionSchema],
 
     allowedDomains: {
