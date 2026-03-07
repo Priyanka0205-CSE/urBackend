@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import ProjectNavbar from './ProjectNavbar';
 // Use the new official logo from public directory
-const logoImage = "/urBACKEND_NAV_LOGO (2).png";
+const logoImage = "/logo.png";
 
 function MainLayout({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);

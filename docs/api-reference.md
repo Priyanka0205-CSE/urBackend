@@ -5,11 +5,11 @@
 | **Auth** | `POST` | `/api/userAuth/signup` | Register a new user |
 | **Auth** | `POST` | `/api/userAuth/login` | Log in and get JWT |
 | **Auth** | `GET` | `/api/userAuth/me` | Get current user profile |
-| **Data** | `GET` | `/api/data/:col` | Get all documents in collection |
-| **Data** | `GET` | `/api/data/:col/:id` | Get document by ID |
-| **Data** | `POST` | `/api/data/:col` | Insert new document |
-| **Data** | `PUT` | `/api/data/:col/:id` | Update document by ID |
-| **Data** | `DELETE` | `/api/data/:col/:id` | Delete document by ID |
+| **Data** | `GET` | `/api/data/:collectionName` | Get all documents in collection |
+| **Data** | `GET` | `/api/data/:collectionName/:id` | Get document by ID |
+| **Data** | `POST` | `/api/data/:collectionName` | Insert new document |
+| **Data** | `PUT` | `/api/data/:collectionName/:id` | Update document by ID |
+| **Data** | `DELETE` | `/api/data/:collectionName/:id` | Delete document by ID |
 | **Storage** | `POST` | `/api/storage/upload` | Upload a file |
 | **Storage** | `DELETE` | `/api/storage/file` | Delete a file by path |
 

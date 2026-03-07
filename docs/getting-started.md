@@ -15,13 +15,16 @@ Head over to the [urBackend Dashboard](https://urbackend.bitbros.in) and create 
 
 You can start pushing data immediately to any collection. You don't even need to pre-define a schema—urBackend will create the collection on the fly when you first POST data to it.
 
+> **⚠️ Note**: Write operations (POST, PUT, DELETE) require your **Secret Key** and should only be performed from a secure backend environment, never from client-side code.
+
+
 ### Example: Storing a Product
 ```javascript
 fetch('https://api.urbackend.bitbros.in/api/data/products', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': 'YOUR_PUBLISHABLE_KEY'
+    'x-api-key': 'YOUR_SECRET_KEY' // Use secret key for write operations
   },
   body: JSON.stringify({
     name: "Cyber Node Logo",
