@@ -6,7 +6,7 @@ This guide walks you through deploying a self-hosted instance of **urBackend** f
 | :--- | :--- | :--- |
 | Node.js API | [Render](https://render.com) | Free tier |
 | MongoDB | [MongoDB Atlas](https://www.mongodb.com/atlas) | Free (M0 cluster) |
-| Redis | [Upstash](https://upstash.com) | Free tier |
+| Redis | [Redis Cloud (redis.io)](https://redis.io/try-free/) | Free tier |
 | React/Vite dashboard | [Vercel](https://vercel.com) | Free tier |
 
 ---
@@ -15,7 +15,7 @@ This guide walks you through deploying a self-hosted instance of **urBackend** f
 
 1. [Prerequisites](#1-prerequisites)
 2. [Set up MongoDB Atlas](#2-set-up-mongodb-atlas)
-3. [Set up Upstash Redis](#3-set-up-upstash-redis)
+3. [Set up Redis Cloud](#3-set-up-redis-cloud)
 4. [Deploy the Backend to Render](#4-deploy-the-backend-to-render)
 5. [Deploy the Frontend to Vercel](#5-deploy-the-frontend-to-vercel)
 6. [Link the Frontend to the Backend](#6-link-the-frontend-to-the-backend)
@@ -29,11 +29,11 @@ Before you start, make sure you have:
 
 - A [GitHub](https://github.com) account with a fork of this repository.
 - A [MongoDB Atlas](https://www.mongodb.com/atlas) account (free).
-- An [Upstash](https://upstash.com) account (free).
+- A [Redis Cloud](https://redis.io/try-free/) account (free).
 - A [Render](https://render.com) account (free).
 - A [Vercel](https://vercel.com) account (free).
 
-> **Tip:** You only need to complete steps 2 and 3 once — the same Atlas cluster and Upstash database can be reused across multiple deployments.
+> **Tip:** You only need to complete steps 2 and 3 once — the same Atlas cluster and Redis Cloud database can be reused across multiple deployments.
 
 ---
 
@@ -47,9 +47,9 @@ Before you start, make sure you have:
    - Username: `urbackend-user`
    - Password: generate a strong password and **copy it**.
    - Role: **"Read and write to any database"**.
-6. Under **Security → Network Access**, click **"Add IP Address"** → select **"Allow Access from Anywhere"** (`0.0.0.0/0`).
+6. Under **Security → Network Access**, click **"Add IP Address"** and add the outbound IP addresses of your Render service.
 
-   > This is required because Render uses dynamic IP addresses.
+   > To find these IPs: open your Render service → **Info** tab → **Outbound IPs**. Render exposes a set of static outbound IPs per service; add each one individually in Atlas.
 
 7. Go to **Database → Connect** → **"Drivers"** and copy the **connection string**. It looks like:
 
@@ -67,16 +67,17 @@ Before you start, make sure you have:
 
 ---
 
-## 3. Set up Upstash Redis
+## 3. Set up Redis Cloud
 
-1. Go to [console.upstash.com](https://console.upstash.com) and sign in.
-2. Click **"Create Database"**.
-3. Enter a name (e.g. `urbackend-redis`), choose the region closest to your Render region, and leave the type as **Regional**.
-4. Click **"Create"**.
-5. On the database details page, scroll to **"REST API"** or **"Connect"** and copy the **Redis URL**. It looks like:
+1. Go to [redis.io/try-free](https://redis.io/try-free/) and sign up for a free account.
+2. After logging in, click **"New database"**.
+3. Choose the **Free** plan, then enter a database name (e.g. `urbackend-redis`) and select the cloud provider and region closest to your Render deployment.
+4. Click **"Create database"**.
+5. Once the database is created, open it and scroll to the **"Security"** section to note the **host**, **port**, **username** (`default`), and **password**.
+6. Construct the Redis URL in this format:
 
    ```
-   rediss://default:<password>@<host>.upstash.io:6379
+   rediss://default:<password>@<host>:<port>
    ```
 
    **Save this URL** — you will need it in step 4.
@@ -94,7 +95,7 @@ Before you start, make sure you have:
    | Setting | Value |
    | :--- | :--- |
    | **Name** | `urbackend-api` (or any name you prefer) |
-   | **Region** | Choose the region closest to your Atlas & Upstash region |
+   | **Region** | Choose the region closest to your Atlas & Redis Cloud region |
    | **Branch** | `main` |
    | **Root Directory** | `backend` |
    | **Runtime** | `Node` |
@@ -115,7 +116,7 @@ NODE_ENV=production
 
 # Database & Cache
 MONGO_URL=<your MongoDB Atlas connection string from step 2>
-REDIS_URL=<your Upstash Redis URL from step 3>
+REDIS_URL=<your Redis Cloud URL from step 3>
 
 # Authentication — generate strong random strings (min 32 chars)
 JWT_SECRET=<at_least_32_random_characters>
@@ -247,7 +248,7 @@ After the frontend is deployed, you must go back to Render and update the `FRONT
 ## 📚 Further reading
 
 - [MongoDB Atlas documentation](https://www.mongodb.com/docs/atlas/)
-- [Upstash Redis documentation](https://upstash.com/docs/redis/overall/getstarted)
+- [Redis Cloud documentation](https://redis.io/docs/latest/operate/rc/)
 - [Render Web Services documentation](https://docs.render.com/web-services)
 - [Vercel deployment documentation](https://vercel.com/docs/deployments/overview)
 - [urBackend Contributing Guide](CONTRIBUTING.md)
