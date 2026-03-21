@@ -17,5 +17,8 @@
   },
   "dependencies": {
     "path": "^0.12.7"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node"
   }
 }
