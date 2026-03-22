@@ -15,38 +15,55 @@ graph TB
         COMPS["Components\nNavbar / Modals / Tables / Charts"]
     end
 
-    subgraph Backend["⚙️ Backend — Express.js\nRender / Railway"]
-        APP["app.js\nEntry Point"]
+    subgraph DashboardAPI["🔐 Dashboard API — Express.js\nadmin.urbackend.com\nPort: 1234"]
+        DASH_APP["app.js\nDashboard Entry Point"]
 
-        subgraph Middleware["🛡️ Middleware"]
+        subgraph DashMiddleware["🛡️ Dashboard Middleware"]
             RL_DASH["dashboardLimiter\n1000 req / 15 min"]
-            RL_API["apiLimiter\n(limiter)"]
-            CORS_ADMIN["adminCorsOptions\nWhitelist CORS"]
+            CORS_ADMIN["Strict CORS\nWhitelist: Frontend URL only"]
             AUTH_MW["authMiddleware\nJWT (Developer)"]
-            API_MW["verifyApiKey\nHashed API Key + Redis Cache"]
             VERIFY_EMAIL["verifyEmail\nOwner isVerified check"]
+        end
+
+        subgraph DashRoutes["📡 Dashboard Routes"]
+            R_AUTH["/api/auth"]
+            R_PROJ["/api/projects"]
+            R_RELEASES["/api/releases"]
+        end
+
+        subgraph DashControllers["🧩 Dashboard Controllers"]
+            C_AUTH["auth.controller\nregister / login\nchange-password / delete\nsendOtp / verifyOtp"]
+            C_PROJ["project.controller\ncreateProject / updateProject\ncreateCollection / deleteCollection\ngetData / insertData / editRow\ndeleteRow / uploadFile / listFiles\ndeleteFile / analytics\nupdateExternalConfig"]
+        end
+    end
+
+    subgraph PublicAPI["🌍 Public API — Express.js\napi.urbackend.com\nPort: 1235"]
+        PUBLIC_APP["app.js\nPublic Entry Point"]
+
+        subgraph PublicMiddleware["🛡️ Public API Middleware"]
+            RL_API["apiLimiter\n(limiter)"]
+            CORS_PUBLIC["Open CORS\nProject-based validation"]
+            API_MW["verifyApiKey\nHashed API Key + Redis Cache"]
             LOGGER["logger\nAPI usage logger"]
         end
 
-        subgraph Routes["📡 Routes"]
-            R_AUTH["/api/auth"]
-            R_PROJ["/api/projects"]
+        subgraph PublicRoutes["📡 Public Routes"]
             R_DATA["/api/data"]
             R_UAUTH["/api/userAuth"]
             R_STORE["/api/storage"]
             R_SCHEMA["/api/schemas"]
         end
 
-        subgraph Controllers["🧩 Controllers"]
-            C_AUTH["auth.controller\nregister / login\nchange-password / delete\nsendOtp / verifyOtp"]
-            C_PROJ["project.controller\ncreateProject / updateProject\ncreateCollection / deleteCollection\ngetData / insertData / editRow\ndeleteRow / uploadFile / listFiles\ndeleteFile / analytics\nupdateExternalConfig"]
+        subgraph PublicControllers["🧩 Public Controllers"]
             C_DATA["data.controller\ninsertData / getAllData\ngetSingleDoc / updateSingleData\ndeleteSingleDoc"]
             C_UAUTH["userAuth.controller\nsignup / login / me"]
             C_STORE["storage.controller\nuploadFile / deleteFile\ndeleteAllFiles"]
             C_SCHEMA["schema.controller\ncheckSchema / createSchema"]
         end
+    end
 
-        subgraph Utils["🔧 Utils / Services"]
+    subgraph SharedCommon["📦 @urbackend/common\nShared Package"]
+        subgraph Utils["🔧 Shared Utils / Services"]
             CONN_MGR["connection.manager\nBYOD DB connections\n(registry cache)"]
             INJECT["injectModel\nDynamic Mongoose Model"]
             QUERY["queryEngine\nDynamic Query Builder"]
@@ -68,16 +85,20 @@ graph TB
     end
 
     DEV -->|"Browser"| Frontend
-    EXTAPP -->|"x-api-key header"| R_DATA & R_UAUTH & R_STORE & R_SCHEMA
+    EXTAPP -->|"x-api-key header"| PublicAPI
 
-    Frontend -->|"JWT Bearer Token"| R_AUTH & R_PROJ
-    APP --> Routes
-    R_AUTH --> AUTH_MW --> C_AUTH
-    R_PROJ --> AUTH_MW --> VERIFY_EMAIL --> C_PROJ
-    R_DATA --> API_MW --> LOGGER --> C_DATA
-    R_UAUTH --> API_MW --> LOGGER --> C_UAUTH
-    R_STORE --> API_MW --> LOGGER --> C_STORE
-    R_SCHEMA --> API_MW --> LOGGER --> C_SCHEMA
+    Frontend -->|"JWT Bearer Token"| DashboardAPI
+    
+    DASH_APP --> DashRoutes
+    R_AUTH --> CORS_ADMIN --> AUTH_MW --> C_AUTH
+    R_PROJ --> CORS_ADMIN --> RL_DASH --> AUTH_MW --> VERIFY_EMAIL --> C_PROJ
+    R_RELEASES --> CORS_ADMIN --> C_PROJ
+    
+    PUBLIC_APP --> PublicRoutes
+    R_DATA --> CORS_PUBLIC --> API_MW --> LOGGER --> C_DATA
+    R_UAUTH --> CORS_PUBLIC --> API_MW --> LOGGER --> C_UAUTH
+    R_STORE --> CORS_PUBLIC --> API_MW --> LOGGER --> C_STORE
+    R_SCHEMA --> CORS_PUBLIC --> API_MW --> LOGGER --> C_SCHEMA
 
     C_AUTH --> MONGO_MAIN
     C_PROJ --> CONN_MGR
@@ -85,6 +106,9 @@ graph TB
     C_UAUTH --> CONN_MGR
     C_STORE --> STORE_MGR
     C_SCHEMA --> CONN_MGR
+
+    DashboardAPI -.->|"Uses"| SharedCommon
+    PublicAPI -.->|"Uses"| SharedCommon
 
     CONN_MGR -->|"isExternal: false"| MONGO_MAIN
     CONN_MGR -->|"isExternal: true\n(decrypt config)"| MONGO_EXT
@@ -100,16 +124,20 @@ graph TB
 
 ## 2. API Request Flow — External App (API Key)
 
+**Public API Server Flow**
+
 ```mermaid
 sequenceDiagram
     participant App as External App
+    participant PublicAPI as Public API Server
     participant MW as verifyApiKey Middleware
     participant Redis as Redis Cache
     participant DB as MongoDB (Projects)
     participant Ctrl as Controller
     participant DataDB as Data DB (Internal / External)
 
-    App->>MW: Request with x-api-key header
+    App->>PublicAPI: Request with x-api-key header
+    PublicAPI->>MW: Route to middleware
     MW->>Redis: Lookup hashed API key
     alt Cache hit
         Redis-->>MW: Return cached project
@@ -122,7 +150,8 @@ sequenceDiagram
     MW->>Ctrl: req.project attached → next()
     Ctrl->>DataDB: Query (internal or external via connection.manager)
     DataDB-->>Ctrl: Results
-    Ctrl-->>App: JSON Response
+    Ctrl-->>PublicAPI: JSON Response
+    PublicAPI-->>App: JSON Response
 ```
 
 ---
@@ -257,48 +286,72 @@ graph TD
 
 ## 6. Security & Rate Limiting
 
-| Layer | Mechanism | Limit / Detail |
-|---|---|---|
-| Dashboard routes (`/api/auth`, `/api/projects`) | `dashboardLimiter` | 1000 req / 15 min |
-| API consumer routes | `limiter` (custom) | Configurable |
-| Developer auth | JWT (`authMiddleware`) | Bearer token, signed per dev |
-| API consumer auth | `verifyApiKey` | SHA-256 hashed key + Redis cache |
-| Email verification gate | `verifyEmail` | `owner.isVerified` must be `true` |
-| CORS | `adminCorsOptions` | Whitelist: `urbackend.bitbros.in` only |
-| Credential storage | AES-256-GCM encryption | BYOD DB/Storage configs encrypted in MongoDB |
-| File uploads | `multer` memory storage | 10 MB per file limit |
+| Server | Layer | Mechanism | Limit / Detail |
+|---|---|---|---|
+| **Dashboard API** | Dashboard routes | `dashboardLimiter` | 1000 req / 15 min |
+| **Dashboard API** | Developer auth | JWT (`authMiddleware`) | Bearer token, signed per dev |
+| **Dashboard API** | Email verification gate | `verifyEmail` | `owner.isVerified` must be `true` |
+| **Dashboard API** | CORS | Strict whitelist | `FRONTEND_URL` only (urbackend.bitbros.in) |
+| **Public API** | API consumer routes | `limiter` (custom) | Configurable per project |
+| **Public API** | API consumer auth | `verifyApiKey` | SHA-256 hashed key + Redis cache |
+| **Public API** | CORS | Open CORS | Project-based, allows any origin |
+| **Both** | Credential storage | AES-256-GCM encryption | BYOD DB/Storage configs encrypted in MongoDB |
+| **Both** | File uploads | `multer` memory storage | 10 MB per file limit |
+| **Both** | Request monitoring | Kiroo SDK | Session replay & error tracking |
 
 ---
 
 ## 7. Infrastructure Overview
 
 ```mermaid
-graph LR
-    subgraph Hosting["Hosting"]
-        FE["Frontend\nVercel"]
-        BE["Backend\nRender / Railway"]
+graph TB
+    subgraph Hosting["☁️ Hosting"]
+        FE["Frontend\nVercel\nurbackend.bitbros.in"]
+        DASH_BE["Dashboard API Server\nRender / Railway\nadmin.urbackend.com\nPort: 1234"]
+        PUB_BE["Public API Server\nRender / Railway\napi.urbackend.com\nPort: 1235"]
     end
 
-    subgraph External["External Services"]
+    subgraph External["🔌 External Services"]
         MONGO["MongoDB Atlas\n(Primary DB)"]
         RDS["Upstash Redis\n(API Key Cache)"]
         SUP["Supabase\n(File Storage)"]
         SMTP["SMTP Server\n(OTP / Emails)"]
     end
 
-    subgraph BYOD["BYOD (User-owned)"]
+    subgraph Shared["📦 Shared"]
+        COMMON["@urbackend/common\nModels, Utils, Services,\nMiddleware, Queues"]
+    end
+
+    subgraph BYOD["🔧 BYOD (User-owned)"]
         USER_MONGO["User's MongoDB Atlas"]
         USER_SUP["User's Supabase"]
     end
 
-    FE -->|"HTTPS REST"| BE
-    ExternalApp["External App"]
-    FE -->|"HTTPS REST"| BE
-    ExternalApp -->|"x-api-key"| BE
-    BE --> MONGO
-    BE --> RDS
-    BE --> SUP
-    BE --> SMTP
-    BE -.->|"Optional BYOD"| USER_MONGO
-    BE -.->|"Optional BYOD"| USER_SUP
+    ExternalApp["External App\n(API Consumer)"]
+    DevUser["Developer\n(Dashboard User)"]
+    
+    DevUser -->|"HTTPS REST"| FE
+    FE -->|"JWT Auth"| DASH_BE
+    ExternalApp -->|"x-api-key"| PUB_BE
+    
+    DASH_BE --> MONGO
+    DASH_BE --> RDS
+    DASH_BE --> SMTP
+    DASH_BE -.->|"Imports"| COMMON
+    
+    PUB_BE --> MONGO
+    PUB_BE --> RDS
+    PUB_BE --> SUP
+    PUB_BE -.->|"Imports"| COMMON
+    PUB_BE -.->|"Optional BYOD"| USER_MONGO
+    PUB_BE -.->|"Optional BYOD"| USER_SUP
 ```
+
+### Deployment Strategy
+
+- **Dashboard API**: Handles developer/admin operations (auth, project management, releases)
+- **Public API**: Handles external app requests (data CRUD, user auth, storage, schemas)
+- **Shared Package**: `@urbackend/common` contains all shared code (models, utils, services)
+- **Independent Scaling**: Each server can scale independently based on traffic
+- **Fault Isolation**: If one server fails, the other continues to operate
+- **Different Domains**: Separate domains for clear separation of concerns
