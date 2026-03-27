@@ -37,17 +37,19 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
+        if (!originalRequest) return Promise.reject(error);
 
         if (error.response?.status === 401 && !originalRequest._retry) {
             
-            if (originalRequest.url.includes('/api/auth/refresh-token')) {
+            if (originalRequest.url?.includes('/api/auth/refresh-token')) {
                 return Promise.reject(error);
             }
 
             originalRequest._retry = true;
 
             try {
-                await axios.post(`${API_URL}/api/auth/refresh-token`, {}, { withCredentials: true });
+                // Use the same axios instance so CSRF header is attached for this POST.
+                await api.post('/api/auth/refresh-token', {});
                 
                 return api(originalRequest);
             } catch (refreshError) {
