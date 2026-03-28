@@ -9,11 +9,11 @@ module.exports = (req, res, next) => {
 
     const authHeader = req.header('Authorization');
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !/^bearer\s+/i.test(authHeader)) {
         return next();
     }
 
-    const token = authHeader.slice(7).trim();
+    const token = authHeader.replace(/^bearer\s+/i, '');
     if (!token) return next();
 
     try {
