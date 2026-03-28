@@ -19,7 +19,7 @@ const getVerificationField = (usersColConfig) => {
     if (modelKeys.includes('emailVerified')) return 'emailVerified';
     if (modelKeys.includes('isVerified')) return 'isVerified';
     if (modelKeys.includes('isverified')) return 'isverified';
-    return 'emailVerified';
+    return null;
 };
 
 const buildAuthUserPayload = (usersColConfig, parsedData, hashedPassword, verifiedValue) => {
@@ -37,7 +37,9 @@ const buildAuthUserPayload = (usersColConfig, parsedData, hashedPassword, verifi
     }
 
     const verificationField = getVerificationField(usersColConfig);
-    payload[verificationField] = verifiedValue;
+    if (verificationField !== null) {
+        payload[verificationField] = verifiedValue;
+    }
 
     if (hasRequiredField(usersColConfig, 'name') && (payload.name === undefined || payload.name === null || payload.name === '')) {
         payload.name = username || email.split('@')[0];
@@ -286,6 +288,9 @@ module.exports.verifyEmail = async (req, res) => {
         const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
 
         const verificationField = getVerificationField(usersColConfig);
+        if (!verificationField) {
+            return res.status(500).json({ error: "No verification field found in users schema" });
+        }
         const result = await Model.updateOne(
             { email },
             { $set: { [verificationField]: true } }
