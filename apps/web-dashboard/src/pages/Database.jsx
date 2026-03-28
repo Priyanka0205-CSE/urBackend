@@ -598,22 +598,24 @@ export default function Database() {
                   />
                 </button>
 
-                <button
-                  onClick={() => setIsRlsDialogOpen(true)}
-                  className="btn btn-secondary"
-                  title="Configure Row Level Security"
-                >
-                  <Shield size={16} />
-                  <span className="hide-mobile">RLS</span>
-                  <span style={{
-                    marginLeft: "0.35rem",
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "999px",
-                    display: "inline-block",
-                    background: activeCollection?.rls?.enabled ? "var(--color-primary)" : "var(--color-border)"
-                  }} />
-                </button>
+                {activeCollection?.name !== 'users' && (
+                  <button
+                    onClick={() => setIsRlsDialogOpen(true)}
+                    className="btn btn-secondary"
+                    title="Configure Row Level Security"
+                  >
+                    <Shield size={16} />
+                    <span className="hide-mobile">RLS</span>
+                    <span style={{
+                      marginLeft: "0.35rem",
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "999px",
+                      display: "inline-block",
+                      background: activeCollection?.rls?.enabled ? "var(--color-primary)" : "var(--color-border)"
+                    }} />
+                  </button>
+                )}
 
                 <button
                   onClick={() => setIsAddModalOpen(true)}
@@ -742,7 +744,7 @@ export default function Database() {
         />
       )}
 
-      {isRlsDialogOpen && activeCollection && (
+      {isRlsDialogOpen && activeCollection && activeCollection.name !== 'users' && (
         <div className="rls-dialog-overlay" onClick={() => setIsRlsDialogOpen(false)}>
           <div
             className="rls-dialog slide-up"

@@ -43,27 +43,124 @@ urBackend is an **Open-Source BaaS** built to eliminate the complexity of backen
 
 ---
 
-## 🚀 Experience the Pulse
+## 🚀 Quick Start
 
 Go from zero to a live backend in **under 60 seconds**.
 
 1.  **Initialize**: Create a project on the [Dashboard](https://urbackend.bitbros.in).
 2.  **Model**: Visually define your collections and schemas.
-3.  **Execute**: Push and pull data immediately using your Instant API Key.
+3.  **Execute**: Push and pull data immediately using your API key.
 
 ```javascript
-// Power your UI with zero backend boilerplate
+// Read data with a publishable key — safe to use in frontend code
 const res = await fetch('https://api.urbackend.bitbros.in/api/data/products', {
-  headers: { 'x-api-key': 'your_pk_live_key' }
+  headers: { 'x-api-key': 'pk_live_...' }
+});
+const { data } = await res.json();
+
+// Write data with a secret key — server-side only
+const writeRes = await fetch('https://api.urbackend.bitbros.in/api/data/products', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'sk_live_...',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ name: 'Widget', price: 9.99 })
 });
 ```
 
-By default, publishable keys are read-focused. Write operations require a secret key unless you enable collection-level RLS (owner-write-only), in which case publishable writes also require `Authorization: Bearer <user_jwt>`.
-For user accounts, use `/api/userAuth/*`; direct `/api/data/users*` access is blocked.
+---
+
+## 🔑 Key Behavior: `pk_live` vs `sk_live`
+
+Understanding which key to use—and when—prevents the most common integration mistakes.
+
+| Scenario | Key | Auth Token | Result |
+| :--- | :--- | :--- | :--- |
+| Read any collection | `pk_live` | Not required | ✅ Allowed |
+| Write to a collection (RLS disabled) | `pk_live` | Any | ❌ 403 Blocked |
+| Write to a collection (RLS disabled) | `sk_live` | Not required | ✅ Allowed |
+| Write to a collection (RLS enabled, no token) | `pk_live` | Missing | ❌ 401 Unauthorized |
+| Write to a collection (RLS enabled, wrong owner) | `pk_live` | Token with different userId | ❌ 403 Owner mismatch |
+| Write to a collection (RLS enabled, correct owner) | `pk_live` | Token with matching userId | ✅ Allowed |
+| Write to a collection (RLS enabled, no ownerField) | `pk_live` | Valid token | ✅ Allowed (userId auto-injected) |
+| Access `/api/data/users*` | Any | Any | ❌ 403 Blocked — use `/api/userAuth/*` |
+
+> **Rule of thumb:** `pk_live` is for frontend reads. Use `sk_live` for server-side writes, or enable collection RLS to allow authenticated users to write their own data with `pk_live`.
 
 ---
 
-## 🏗️ How it Works (The Visual Flow)
+## 🛡️ Row-Level Security (RLS)
+
+RLS lets you safely allow frontend clients to write data without exposing your secret key. When enabled on a collection, `pk_live` writes are gated by user ownership.
+
+**How it works:**
+
+1. Enable RLS for a collection in the Dashboard (mode: `owner-write-only`).
+2. Choose the **owner field** — the document field that stores the authenticated user's ID (e.g., `userId`).
+3. The client must send a valid user JWT in the `Authorization: Bearer <token>` header.
+4. urBackend enforces that the JWT's `userId` matches the document's owner field.
+
+**Example — user creates a post:**
+
+```javascript
+// 1. User logs in to get their JWT
+const loginRes = await fetch('https://api.urbackend.bitbros.in/api/userAuth/login', {
+  method: 'POST',
+  headers: { 'x-api-key': 'pk_live_...', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: 'user@example.com', password: 'secret' })
+});
+const { token } = await loginRes.json();
+
+// 2. User creates a post — userId is auto-injected if omitted
+const postRes = await fetch('https://api.urbackend.bitbros.in/api/data/posts', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'pk_live_...',
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ title: 'Hello World', content: '...' })
+});
+// The saved document will include: { userId: '<logged-in user id>', title: 'Hello World', ... }
+```
+
+**Common failure cases:**
+
+| Error | Cause | Fix |
+| :--- | :--- | :--- |
+| `403 Write blocked for publishable key` | RLS is not enabled on the collection | Enable RLS in Dashboard, or use `sk_live` |
+| `401 Authentication required` | No `Authorization` header provided | Add `Authorization: Bearer <user_jwt>` |
+| `403 RLS owner mismatch` | Token's `userId` ≠ document's owner field | Make sure the user is writing their own data |
+| `403 Insert denied` (ownerField `_id`) | `_id` is not a valid owner field for inserts | Change ownerField to `userId` or similar |
+| `403 Owner field immutable` | Trying to change the owner field on update | Remove the owner field from the PATCH/PUT body |
+
+---
+
+## 👤 User Authentication
+
+User accounts are managed through `/api/userAuth/*` endpoints — **not** through the data API. Direct access to `/api/data/users*` is blocked for security.
+
+```javascript
+// Sign up a new user
+POST /api/userAuth/signup
+{ "email": "user@example.com", "password": "secret", "name": "Alice" }
+
+// Log in
+POST /api/userAuth/login
+{ "email": "user@example.com", "password": "secret" }
+// Returns: { token: "<jwt>", user: { ... } }
+
+// Get current user profile (requires Bearer token)
+GET /api/userAuth/me
+Authorization: Bearer <token>
+```
+
+Both endpoints require your `pk_live` key in `x-api-key`. See the [full auth docs](docs/introduction.md#authentication) for more.
+
+---
+
+## 🏗️ How it Works
 
 ```mermaid
 graph LR
@@ -87,6 +184,7 @@ Want to run your own instance? Follow the step-by-step guide to deploy urBackend
 👉 **[DEPLOYMENT.md](DEPLOYMENT.md)**
 
 ---
+
 ## 🤝 Community
 
 Join hundreds of developers building faster without the backend headaches.
