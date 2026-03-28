@@ -5,7 +5,11 @@
   "main": "src/app.js",
   "scripts": {
     "dev": "node src/app.js",
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "test": "jest --testPathPatterns=src/"
+  },
+  "jest": {
+    "testEnvironment": "node"
   },
   "dependencies": {
     "@urbackend/common": "*",
