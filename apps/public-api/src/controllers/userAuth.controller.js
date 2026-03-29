@@ -2,12 +2,32 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { z } = require('zod');
 const mongoose = require('mongoose');
-const Project = require('@urbackend/common');
 const {redis} = require('@urbackend/common');
+const {Project} = require('@urbackend/common');
 const { authEmailQueue } = require('@urbackend/common');
 const { loginSchema, userSignupSchema, resetPasswordSchema, onlyEmailSchema, verifyOtpSchema, changePasswordSchema, sanitize } = require('@urbackend/common');
 const { getConnection } = require('@urbackend/common');
 const { getCompiledModel } = require('@urbackend/common');
+const {
+    assertRefreshRateLimits,
+    clearRefreshCookie,
+    getRefreshSession,
+    hashRefreshToken,
+    issueAuthTokens,
+    parseRefreshToken,
+    readRefreshTokenFromRequest,
+    revokeSessionChain,
+    shouldExposeRefreshToken,
+    persistRefreshSession
+} = require('../utils/refreshToken');
+
+const getUsersModel = async (project) => {
+    const usersColConfig = project.collections.find(c => c.name === 'users');
+    if (!usersColConfig) return { usersColConfig: null, Model: null };
+    const connection = await getConnection(project._id);
+    const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+    return { usersColConfig, Model };
+};
 
 const hasRequiredField = (usersColConfig, fieldKey) => {
     const model = usersColConfig?.model || [];
@@ -99,15 +119,18 @@ module.exports.signup = async (req, res) => {
             pname: project.name
         });
 
-        const token = jwt.sign(
-            { userId: result._id, projectId: project._id },
-            project.jwtSecret,
-            { expiresIn: '7d' }
-        );
+        const issuedTokens = await issueAuthTokens({
+            project,
+            userId: result._id,
+            res
+        });
 
         res.status(201).json({
             message: "User registered successfully. Please verify your email.",
-            token: token,
+            token: issuedTokens.accessToken,
+            accessToken: issuedTokens.accessToken,
+            expiresIn: issuedTokens.expiresIn,
+            ...(shouldExposeRefreshToken(req) ? { refreshToken: issuedTokens.refreshToken } : {}),
             userId: result._id
         });
 
@@ -138,13 +161,18 @@ module.exports.login = async (req, res) => {
         const validPass = await bcrypt.compare(password, user.password);
         if (!validPass) return res.status(400).json({ error: "Invalid email or password" });
 
-        const token = jwt.sign(
-            { userId: user._id, projectId: project._id },
-            project.jwtSecret,
-            { expiresIn: '7d' }
-        );
+        const issuedTokens = await issueAuthTokens({
+            project,
+            userId: user._id,
+            res
+        });
 
-        res.json({ token });
+        res.json({
+            token: issuedTokens.accessToken,
+            accessToken: issuedTokens.accessToken,
+            expiresIn: issuedTokens.expiresIn,
+            ...(shouldExposeRefreshToken(req) ? { refreshToken: issuedTokens.refreshToken } : {})
+        });
 
     } catch (err) {
         if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
@@ -355,7 +383,8 @@ module.exports.resetPasswordUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        const collection = await getAuthCollection(project);
+        const { Model: collection } = await getUsersModel(project);
+        if (!collection) return res.status(404).json({ error: "Auth collection not found" });
 
         const result = await collection.updateOne(
             { email },
@@ -465,6 +494,138 @@ module.exports.changePasswordUser = async (req, res) => {
     } catch (err) {
         if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues?.[0]?.message || "Validation failed" });
         res.status(500).json({ error: err.message });
+    }
+};
+
+module.exports.refreshToken = async (req, res) => {
+    try {
+        const rawRefreshToken = readRefreshTokenFromRequest(req);
+        if (!rawRefreshToken) {
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'Refresh token missing' });
+        }
+
+        const parsedToken = parseRefreshToken(rawRefreshToken);
+        if (!parsedToken) {
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'Invalid refresh token format' });
+        }
+
+        const earlyRateLimit = await assertRefreshRateLimits({ req, tokenId: parsedToken.tokenId });
+        if (earlyRateLimit.limited) {
+            clearRefreshCookie(res);
+            return res.status(429).json({ error: earlyRateLimit.message });
+        }
+
+        const session = await getRefreshSession(parsedToken.tokenId);
+        if (!session) {
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'Refresh session not found' });
+        }
+
+        if (String(req.project._id) !== String(session.projectId)) {
+            return res.status(403).json({ error: 'Refresh token does not belong to this project' });
+        }
+
+        const rateResult = await assertRefreshRateLimits({ req, tokenId: session.tokenId, userId: session.userId });
+        if (rateResult.limited) {
+            clearRefreshCookie(res);
+            return res.status(429).json({ error: rateResult.message });
+        }
+
+        const now = Date.now();
+        const isExpired = new Date(session.expiresAt).getTime() <= now;
+        if (session.revokedAt || session.isUsed || isExpired) {
+            await revokeSessionChain(session.tokenId);
+            clearRefreshCookie(res);
+            return res.status(403).json({ error: 'Refresh token is invalid or already used' });
+        }
+
+        if (hashRefreshToken(rawRefreshToken) !== session.tokenHash) {
+            await revokeSessionChain(session.tokenId);
+            clearRefreshCookie(res);
+            return res.status(403).json({ error: 'Refresh token mismatch' });
+        }
+
+        session.isUsed = true;
+        session.lastUsedAt = new Date().toISOString();
+        await persistRefreshSession(session);
+
+        const project = await Project.findById(session.projectId)
+            .select('name resources collections jwtSecret isAuthEnabled')
+            .lean();
+
+        if (!project || !project.isAuthEnabled) {
+            await revokeSessionChain(session.tokenId);
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'Project auth is unavailable' });
+        }
+
+        const { Model } = await getUsersModel(project);
+        if (!Model) {
+            await revokeSessionChain(session.tokenId);
+            clearRefreshCookie(res);
+            return res.status(404).json({ error: 'Auth collection not found' });
+        }
+
+        const user = await Model.findOne(
+            { _id: new mongoose.Types.ObjectId(session.userId) },
+            { _id: 1 }
+        ).lean();
+        if (!user) {
+            await revokeSessionChain(session.tokenId);
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'User not found for refresh token' });
+        }
+
+        const newTokens = await issueAuthTokens({
+            project,
+            userId: user._id,
+            res,
+            rotatedFrom: session.tokenId
+        });
+
+        session.rotatedTo = newTokens.tokenId;
+        session.lastUsedAt = new Date().toISOString();
+        await persistRefreshSession(session);
+
+        const usedHeaderToken = !!req.header('x-refresh-token');
+        return res.status(200).json({
+            token: newTokens.accessToken,
+            accessToken: newTokens.accessToken,
+            expiresIn: newTokens.expiresIn,
+            ...(usedHeaderToken ? { refreshToken: newTokens.refreshToken } : {})
+        });
+    } catch (err) {
+        clearRefreshCookie(res);
+        return res.status(500).json({ error: err.message });
+    }
+};
+
+module.exports.logout = async (req, res) => {
+    try {
+        const rawRefreshToken = readRefreshTokenFromRequest(req);
+        if (rawRefreshToken) {
+            const parsedToken = parseRefreshToken(rawRefreshToken);
+            if (parsedToken) {
+                const session = await getRefreshSession(parsedToken.tokenId);
+                if (session && hashRefreshToken(rawRefreshToken) === session.tokenHash) {
+                    if (String(req.project._id) !== String(session.projectId)) {
+                        return res.status(403).json({ error: 'Refresh token does not belong to this project' });
+                    }
+                    session.revokedAt = new Date().toISOString();
+                    session.isUsed = true;
+                    session.lastUsedAt = new Date().toISOString();
+                    await persistRefreshSession(session);
+                }
+            }
+        }
+
+        clearRefreshCookie(res);
+        return res.status(200).json({ success: true, message: 'Logged out successfully' });
+    } catch (err) {
+        clearRefreshCookie(res);
+        return res.status(500).json({ error: err.message });
     }
 };
 

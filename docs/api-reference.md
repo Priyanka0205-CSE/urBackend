@@ -4,6 +4,8 @@
 | :--- | :--- | :--- | :--- |
 | **Auth** | `POST` | `/api/userAuth/signup` | Register a new user |
 | **Auth** | `POST` | `/api/userAuth/login` | Log in and get JWT |
+| **Auth** | `POST` | `/api/userAuth/refresh-token` | Rotate refresh token and issue new access token |
+| **Auth** | `POST` | `/api/userAuth/logout` | Revoke current refresh session |
 | **Auth** | `GET` | `/api/userAuth/me` | Get current user profile |
 | **Auth** | `POST` | `/api/userAuth/verify-email` | Verify user email with OTP |
 | **Auth** | `POST` | `/api/userAuth/request-password-reset` | Request password reset OTP |
@@ -25,6 +27,7 @@
 | :--- | :--- | :--- |
 | `x-api-key` | Yes | Project API key (`pk_live_*` or `sk_live_*`) |
 | `Authorization: Bearer <jwt>` | Required for `pk_live` writes with RLS | End-user identity for owner-based write checks |
+| `x-refresh-token` | Optional (mobile/non-browser refresh flow) | Provide refresh token when cookies are not used |
 | `Content-Type: application/json` | Required for JSON requests | Body parsing and validation |
 
 ## Status Code Reference
@@ -42,6 +45,7 @@
 - `pk_live` can always perform read requests on `/api/data/*`.
 - `pk_live` write requests on `/api/data/*` require collection-level RLS + user Bearer token.
 - `users` collection operations are routed through `/api/userAuth/*`; `/api/data/users*` is blocked.
+- In `userAuth` responses, `token` is a temporary backward-compatibility alias of `accessToken` and will be removed in a future release.
 
 ## Quick Write Matrix
 
