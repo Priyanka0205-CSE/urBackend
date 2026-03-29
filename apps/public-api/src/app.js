@@ -11,6 +11,7 @@ if (process.env.NODE_ENV !== 'test') {
 const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
+const cookieParser = require('cookie-parser');
 const app = express();
 app.set('trust proxy', 1);
 const { garbageCollect, storageGarbageCollect, getPublicIp } = require('@urbackend/common');
@@ -24,6 +25,7 @@ const {authEmailQueue} = require('@urbackend/common');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+app.use(cookieParser());
 
 
 if (process.env.NODE_ENV !== 'test') {

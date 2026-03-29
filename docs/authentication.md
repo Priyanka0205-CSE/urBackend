@@ -1,6 +1,6 @@
 # Authentication 🔐
 
-urBackend includes a built-in authentication system that manages user registration, login, and profile retrieval using **JSON Web Tokens (JWT)**.
+urBackend includes a built-in authentication system that manages user registration, login, token refresh, logout, and profile retrieval using **JSON Web Tokens (JWT)**.
 
 ## The `users` Collection Contract
 
@@ -35,7 +35,7 @@ await fetch('https://api.ub.bitbros.in/api/userAuth/signup', {
 
 ## 2. Login User
 
-Authenticates credentials and returns a 7-day JWT token.
+Authenticates credentials and returns an access token. A refresh token is also issued for session continuation.
 
 **Endpoint**: `POST /api/userAuth/login`
 
@@ -48,10 +48,57 @@ const res = await fetch('https://api.ub.bitbros.in/api/userAuth/login', {
     password: "securePassword123"
   })
 });
-const { token } = await res.json();
+const { accessToken, expiresIn } = await res.json();
 ```
 
-## 3. Get Profile (Me)
+> [!NOTE]
+> `token` is currently returned as a backward-compatibility alias of `accessToken` and will be removed in a future release.
+> Please migrate clients to `accessToken` now.
+
+## 3. Refresh Access Token
+
+Use when access token expires.
+
+**Endpoint**: `POST /api/userAuth/refresh-token`
+
+Web clients can use refresh cookie automatically:
+
+```javascript
+const refreshed = await fetch('https://api.ub.bitbros.in/api/userAuth/refresh-token', {
+  method: 'POST',
+  headers: { 'x-api-key': 'YOUR_KEY' },
+  credentials: 'include'
+});
+```
+
+Mobile/non-browser clients can send refresh token in header:
+
+```javascript
+const refreshed = await fetch('https://api.ub.bitbros.in/api/userAuth/refresh-token', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'YOUR_KEY',
+    'x-refresh-token': REFRESH_TOKEN,
+    'x-refresh-token-mode': 'header'
+  }
+});
+```
+
+## 4. Logout
+
+Revokes the current refresh session.
+
+**Endpoint**: `POST /api/userAuth/logout`
+
+```javascript
+await fetch('https://api.ub.bitbros.in/api/userAuth/logout', {
+  method: 'POST',
+  headers: { 'x-api-key': 'YOUR_KEY' },
+  credentials: 'include'
+});
+```
+
+## 5. Get Profile (Me)
 
 Fetches the details of the currently authenticated user.
 
@@ -68,7 +115,8 @@ await fetch('https://api.ub.bitbros.in/api/userAuth/me', {
 
 ## Security Note
 
-- **JWT Expiration**: Tokens expire after **7 days**. Ensure your frontend handles token refresh or re-login logic.
+- **Access Token Expiration**: Access tokens are short-lived. Use `/api/userAuth/refresh-token` for renewal.
+- **Refresh Token Rotation**: Refresh tokens are rotated and replay-protected.
 - **Passwords**: Passwords are automatically hashed using **Bcrypt** before being stored. Even project owners cannot see raw user passwords.
 
 ## How this relates to RLS and `pk_live`

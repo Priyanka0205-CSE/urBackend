@@ -17,6 +17,7 @@
     "@supabase/supabase-js": "^2.84.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.70.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const verifyApiKey = require('../middlewares/verifyApiKey');
 const {checkAuthEnabled} = require('@urbackend/common');
-const { signup, login, me, verifyEmail, requestPasswordReset, resetPasswordUser, updateProfile, changePasswordUser } = require('../controllers/userAuth.controller');
+const { signup, login, me, verifyEmail, requestPasswordReset, resetPasswordUser, updateProfile, changePasswordUser, refreshToken, logout } = require('../controllers/userAuth.controller');
 
 // SIGNUP ROUTE
 router.post('/signup', verifyApiKey, checkAuthEnabled, signup);
@@ -23,5 +23,7 @@ router.post('/reset-password', verifyApiKey, checkAuthEnabled, resetPasswordUser
 // PROFILE MANAGEMENT
 router.put('/update-profile', verifyApiKey, checkAuthEnabled, updateProfile);
 router.put('/change-password', verifyApiKey, checkAuthEnabled, changePasswordUser);
+router.post('/refresh-token', verifyApiKey, checkAuthEnabled, refreshToken);
+router.post('/logout', verifyApiKey, checkAuthEnabled, logout);
 
 module.exports = router;
