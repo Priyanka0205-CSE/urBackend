@@ -1,30 +1,28 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authApi } from '../lib/api';
+import { useState } from 'react';
+import { authApi, dataApi } from '../lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
-const AuthContext = createContext(null);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+import AuthContext from './auth-context';
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('token'));
   const queryClient = useQueryClient();
 
+  const syncProfile = async (userData) => {
+    try {
+      await dataApi.syncProfileFromUser(userData);
+    } catch (profileSyncError) {
+      console.error('⚠️ Profile sync failed:', profileSyncError);
+    }
+  };
+
   // Fetch current user
-  const { data: user, isLoading, error } = useQuery({
+  const { data: user, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      console.log('🔍 Fetching user profile...');
       const response = await authApi.getMe();
-      console.log('✅ User profile:', response.data);
       // Save to localStorage for persistence
       localStorage.setItem('user', JSON.stringify(response.data));
+      await syncProfile(response.data);
       return response.data;
     },
     enabled: !!token,
@@ -34,35 +32,40 @@ export const AuthProvider = ({ children }) => {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (response) => {
-      console.log('✅ Login response:', response.data);
-      const { token } = response.data;
-      setToken(token);
-      localStorage.setItem('token', token);
+    onSuccess: async (response) => {
+      const nextToken = response.data?.accessToken || response.data?.token;
+      setToken(nextToken);
+      localStorage.setItem('token', nextToken);
       // Trigger user fetch
-      queryClient.invalidateQueries(['me']);
+      await queryClient.invalidateQueries({ queryKey: ['me'] });
     },
   });
 
   // Signup mutation
   const signupMutation = useMutation({
     mutationFn: authApi.signup,
-    onSuccess: (response) => {
-      console.log('✅ Signup response:', response.data);
-      const { token } = response.data;
-      setToken(token);
-      localStorage.setItem('token', token);
+    onSuccess: async (response) => {
+      const nextToken = response.data?.accessToken || response.data?.token;
+      setToken(nextToken);
+      localStorage.setItem('token', nextToken);
       // Trigger user fetch
-      queryClient.invalidateQueries(['me']);
+      await queryClient.invalidateQueries({ queryKey: ['me'] });
     },
   });
 
   // Logout
-  const logout = () => {
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    queryClient.clear();
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (logoutError) {
+      console.error('Logout request failed:', logoutError);
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+    } finally {
+      setToken(null);
+      queryClient.clear();
+    }
   };
 
   const value = {

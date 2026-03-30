@@ -82,7 +82,7 @@ Add these extra fields to the `users` schema:
 }
 ```
 
-**3. `comments`**, **4. `likes`**, and **5. `follows`** (See [full schema definitions](#-detailed-schema-reference) below).
+**3. `profiles`**, **4. `comments`**, **5. `likes`**, and **6. `follows`** (See [full schema definitions](#-detailed-schema-reference) below).
 
 ### 4. Environment Setup
 
@@ -90,18 +90,20 @@ Add these extra fields to the `users` schema:
 ```env
 VITE_PUBLIC_KEY=pk_live_your_key_here
 VITE_API_URL=https://api.ub.bitbros.in
+# Required for image uploads only
 VITE_PROXY_URL=http://localhost:4000/api/proxy
 ```
 
 **Server (`server/.env`)**
 ```env
+# Used only by upload proxy (/storage/*)
 API_KEY=sk_live_your_key_here
 PORT=4000
 ```
 
 ### 5. Run the Application
 ```bash
-# Terminal 1: Start Proxy Server
+# Terminal 1: Start Proxy Server (required for uploads)
 cd server && npm start
 
 # Terminal 2: Start React App
@@ -118,28 +120,62 @@ social-demo/
 │   ├── src/
 │   │   ├── components/  # Atomic UI, Post, and Layout components
 │   │   ├── contexts/    # Auth state management
-│   │   ├── lib/         # API clients (Public & Private Proxy)
+│   │   ├── lib/         # API clients (Public API + Upload Proxy)
 │   │   └── pages/       # Route-level views (Home, Profile, etc.)
 └── server/              # Express Proxy Server
-    └── index.js         # Secret Key injection & Multipart streaming
+    └── index.js         # Secret Key injection for /storage/*
 ```
 
 ---
 
 ## 🔐 Security Architecture
 
-To protect your **Secret Key**, this app uses a hybrid architecture:
-1. **Public API Client**: Uses `pk_live_*` for safe read operations directly from the browser.
-2. **Private Proxy Server**: A simple Express server that holds your `sk_live_*`. Writing operations (Post, Like, Upload) are routed through this proxy to keep your secret key hidden from the client.
+This demo is now **PK-first** and aligned with the latest public APIs:
+1. **Public API Client**: Uses `pk_live_*` for `/api/userAuth/*` and `/api/data/*`.
+2. **RLS-protected writes**: `posts`, `comments`, `likes`, `follows`, and `profiles` require RLS so authenticated users can write with `pk_live`.
+3. **Upload Proxy**: A tiny local server keeps `sk_live_*` only for `/api/storage/*` uploads.
+
+### Required RLS configuration
+
+For each writable collection (`posts`, `comments`, `likes`, `follows`, `profiles`):
+
+- `enabled: true`
+- `mode: owner-write-only`
+- `ownerField: userId`
+- `requireAuthForWrite: true`
+
+> Note: `posts` and `comments` still include `authorId` for app rendering. RLS ownership uses `userId`.
 
 ---
 
 ## 📊 Detailed Schema Reference
 
+### `profiles`
+```json
+{
+  "userId": { "type": "String", "required": true, "unique": true },
+  "username": { "type": "String", "required": true, "unique": true },
+  "displayName": { "type": "String" },
+  "bio": { "type": "String" },
+  "avatar": { "type": "String" },
+  "banner": { "type": "String" },
+  "verified": { "type": "Boolean", "default": false },
+  "location": { "type": "String" },
+  "website": { "type": "String" },
+  "followersCount": { "type": "Number", "default": 0 },
+  "followingCount": { "type": "Number", "default": 0 },
+  "createdAt": { "type": "Date", "default": "Date.now" },
+  "updatedAt": { "type": "Date", "default": "Date.now" }
+}
+```
+
+---
+
 ### `comments`
 ```json
 {
   "postId": { "type": "String", "required": true },
+  "userId": { "type": "String", "required": true },
   "authorId": { "type": "String", "required": true },
   "authorUsername": { "type": "String", "required": true },
   "authorDisplayName": { "type": "String" },
@@ -163,6 +199,7 @@ To protect your **Secret Key**, this app uses a hybrid architecture:
 ### `follows`
 ```json
 {
+  "userId": { "type": "String", "required": true },
   "followerId": { "type": "String", "required": true },
   "followingId": { "type": "String", "required": true },
   "createdAt": { "type": "Date", "default": "Date.now" }
@@ -173,7 +210,9 @@ To protect your **Secret Key**, this app uses a hybrid architecture:
 
 ## 🐛 Troubleshooting
 
-- **Images not uploading?** Ensure the `server` is running and `API_KEY` is a secret key (`sk_live_...`).
+- **Profile/search pages empty?** Ensure `profiles` collection exists and RLS is enabled with `ownerField=userId`.
+- **403 on create/update/delete?** Ensure RLS is enabled on that collection for `pk_live` writes.
+- **Images not uploading?** Ensure the `server` is running and `API_KEY` is a secret key (`sk_live_...`) for `/storage/*`.
 - **403 Forbidden?** Double-check your **Domain Whitelisting** settings in the urBackend dashboard.
 - **Data not appearing?** Verify that your collection names and field types match the schemas above exactly.
 

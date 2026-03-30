@@ -73,6 +73,34 @@ const buildAuthUserPayload = (usersColConfig, parsedData, hashedPassword, verifi
     return payload;
 };
 
+const SENSITIVE_PROFILE_KEYS = [
+    'password',
+    'email',
+    'token',
+    'otp',
+    'secret',
+    'session',
+    'refresh'
+];
+
+const sanitizePublicProfile = (userDoc, usersColConfig) => {
+    const result = { _id: userDoc._id };
+    const schemaKeys = (usersColConfig?.model || []).map((f) => f?.key).filter(Boolean);
+
+    for (const key of schemaKeys) {
+        const lowered = String(key).toLowerCase();
+        const isSensitive = SENSITIVE_PROFILE_KEYS.some((needle) => lowered.includes(needle));
+        if (isSensitive) continue;
+        if (userDoc[key] !== undefined) {
+            result[key] = userDoc[key];
+        }
+    }
+
+    if (userDoc.createdAt) result.createdAt = userDoc.createdAt;
+    if (userDoc.updatedAt) result.updatedAt = userDoc.updatedAt;
+    return result;
+};
+
 
 // POST REQ FOR SIGNUP
 module.exports.signup = async (req, res) => {
@@ -213,6 +241,31 @@ module.exports.me = async (req, res) => {
 
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+}
+
+// GET PUBLIC PROFILE BY USERNAME
+module.exports.publicProfile = async (req, res) => {
+    try {
+        const project = req.project;
+        const username = String(req.params.username || '').trim();
+        if (!username) return res.status(400).json({ error: "Username is required" });
+
+        const { usersColConfig, Model } = await getUsersModel(project);
+        if (!usersColConfig || !Model) return res.status(404).json({ error: "Auth collection not found" });
+
+        const hasUsernameField = (usersColConfig.model || []).some((f) => String(f?.key || '').trim() === 'username');
+        if (!hasUsernameField) {
+            return res.status(400).json({ error: "Public profile requires a 'username' field in users schema" });
+        }
+
+        const user = await Model.findOne({ username }, { password: 0 }).lean();
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        const profile = sanitizePublicProfile(user, usersColConfig);
+        return res.json(profile);
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
     }
 }
 

@@ -235,4 +235,48 @@ describe('public userAuth refresh flow', () => {
         );
         expect(res.status).toHaveBeenCalledWith(200);
     });
+
+    test('public profile returns only safe fields', async () => {
+        mockModel.findOne.mockResolvedValueOnce({
+            _id: 'user_1',
+            username: 'yash',
+            name: 'Yash',
+            bio: 'builder',
+            email: 'private@example.com',
+            password: 'hashed_secret',
+            createdAt: '2026-01-01T00:00:00.000Z'
+        });
+
+        const req = makeReq({
+            project: {
+                ...makeProject(),
+                collections: [{
+                    name: 'users',
+                    model: [
+                        { key: 'username' },
+                        { key: 'name' },
+                        { key: 'bio' },
+                        { key: 'email' },
+                        { key: 'password' }
+                    ]
+                }]
+            },
+            headers: {},
+        });
+        req.params = { username: 'yash' };
+
+        const res = makeRes();
+        await controller.publicProfile(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({
+                _id: 'user_1',
+                username: 'yash',
+                name: 'Yash',
+                bio: 'builder',
+            })
+        );
+        expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ email: 'private@example.com' }));
+        expect(res.json).not.toHaveBeenCalledWith(expect.objectContaining({ password: 'hashed_secret' }));
+    });
 });

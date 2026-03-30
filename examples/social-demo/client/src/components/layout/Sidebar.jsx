@@ -17,8 +17,8 @@ export default function Sidebar() {
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

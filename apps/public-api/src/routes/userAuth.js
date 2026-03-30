@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const verifyApiKey = require('../middlewares/verifyApiKey');
 const {checkAuthEnabled} = require('@urbackend/common');
-const { signup, login, me, verifyEmail, requestPasswordReset, resetPasswordUser, updateProfile, changePasswordUser, refreshToken, logout } = require('../controllers/userAuth.controller');
+const { signup, login, me, publicProfile, verifyEmail, requestPasswordReset, resetPasswordUser, updateProfile, changePasswordUser, refreshToken, logout } = require('../controllers/userAuth.controller');
 
 // SIGNUP ROUTE
 router.post('/signup', verifyApiKey, checkAuthEnabled, signup);
@@ -12,6 +12,7 @@ router.post('/login', verifyApiKey, checkAuthEnabled, login);
 
 // GET CURRENT USER
 router.get('/me', verifyApiKey, checkAuthEnabled, me);
+router.get('/public/:username', verifyApiKey, checkAuthEnabled, publicProfile);
 
 // EMAIL VERIFICATION
 router.post('/verify-email', verifyApiKey, checkAuthEnabled, verifyEmail);

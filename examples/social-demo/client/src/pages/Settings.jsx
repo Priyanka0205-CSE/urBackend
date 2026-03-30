@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { authApi, storageApi } from '../lib/api';
+import { authApi, storageApi, dataApi } from '../lib/api';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { Camera, ArrowLeft } from 'lucide-react';
@@ -24,8 +24,9 @@ export default function Settings() {
 
   const updateProfileMutation = useMutation({
     mutationFn: authApi.updateProfile,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['me']);
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ['me'] });
+      dataApi.syncProfileFromUser({ ...user, ...variables, updatedAt: new Date().toISOString() });
       alert('Profile updated successfully!');
     },
   });

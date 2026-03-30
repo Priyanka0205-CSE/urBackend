@@ -18,7 +18,7 @@ export default function Profile() {
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['profile', username],
     queryFn: async () => {
-      const response = await dataApi.getUsers({ username });
+      const response = await dataApi.getProfiles({ username });
       return Array.isArray(response.data) ? response.data[0] : response.data?.data?.[0];
     },
   });
@@ -29,7 +29,7 @@ export default function Profile() {
     queryFn: async () => {
       if (!profile) return [];
       const response = await dataApi.getPosts({
-        authorId: profile._id,
+        authorId: profile.userId,
         sort: 'createdAt:-1',
         limit: 50,
       });
@@ -40,15 +40,15 @@ export default function Profile() {
 
   // Check if following
   const { data: followData } = useQuery({
-    queryKey: ['follow-status', profile?._id],
+    queryKey: ['follow-status', profile?.userId],
     queryFn: async () => {
       const response = await dataApi.getFollows({
-        followerId: currentUser._id,
-        followingId: profile._id,
+        followerId: currentUser.userId || currentUser._id,
+        followingId: profile.userId,
       });
       return Array.isArray(response.data) ? response.data[0] : response.data?.data?.[0];
     },
-    enabled: !!profile && !!currentUser && profile._id !== currentUser._id,
+    enabled: !!profile && !!currentUser && profile.userId !== (currentUser.userId || currentUser._id),
   });
 
   // Follow/Unfollow mutation
@@ -58,15 +58,15 @@ export default function Profile() {
         await dataApi.deleteFollow(followData._id);
       } else {
         await dataApi.createFollow({
-          followerId: currentUser._id,
-          followingId: profile._id,
+          followerId: currentUser.userId || currentUser._id,
+          followingId: profile.userId,
           createdAt: new Date().toISOString(),
         });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries(['follow-status', profile._id]);
-      queryClient.invalidateQueries(['profile', username]);
+      queryClient.invalidateQueries({ queryKey: ['follow-status', profile.userId] });
+      queryClient.invalidateQueries({ queryKey: ['profile', username] });
     },
   });
 
@@ -89,7 +89,7 @@ export default function Profile() {
     );
   }
 
-  const isOwnProfile = currentUser?._id === profile._id;
+  const isOwnProfile = (currentUser?.userId || currentUser?._id) === profile.userId;
 
   return (
     <div className="min-h-screen">

@@ -47,6 +47,7 @@ Create a new collection named **`posts`** with these fields:
 ```
 Field Name          | Type    | Required | Default
 --------------------|---------|----------|----------
+userId              | String  | Yes      | -
 authorId            | String  | Yes      | -
 authorUsername      | String  | Yes      | -
 authorDisplayName   | String  | No       | -
@@ -60,9 +61,45 @@ retweetsCount       | Number  | No       | 0
 createdAt           | Date    | No       | Date.now
 ```
 
+**RLS settings for `posts` (required):**
+- enabled: `true`
+- mode: `owner-write-only`
+- ownerField: `userId`
+- requireAuthForWrite: `true`
+
 ---
 
-### 📝 STEP 3: Create `comments` Collection
+### 📝 STEP 3: Create `profiles` Collection
+
+Create a new collection named **`profiles`** with these fields:
+
+```
+Field Name          | Type    | Required | Unique | Default
+--------------------|---------|----------|--------|----------
+userId              | String  | Yes      | Yes    | -
+username            | String  | Yes      | Yes    | -
+displayName         | String  | No       | No     | -
+bio                 | String  | No       | No     | -
+avatar              | String  | No       | No     | -
+banner              | String  | No       | No     | -
+verified            | Boolean | No       | No     | false
+location            | String  | No       | No     | -
+website             | String  | No       | No     | -
+followersCount      | Number  | No       | No     | 0
+followingCount      | Number  | No       | No     | 0
+createdAt           | Date    | No       | No     | Date.now
+updatedAt           | Date    | No       | No     | Date.now
+```
+
+**RLS settings for `profiles` (required):**
+- enabled: `true`
+- mode: `owner-write-only`
+- ownerField: `userId`
+- requireAuthForWrite: `true`
+
+---
+
+### 📝 STEP 4: Create `comments` Collection
 
 Create a new collection named **`comments`** with these fields:
 
@@ -70,6 +107,7 @@ Create a new collection named **`comments`** with these fields:
 Field Name          | Type    | Required | Default
 --------------------|---------|----------|----------
 postId              | String  | Yes      | -
+userId              | String  | Yes      | -
 authorId            | String  | Yes      | -
 authorUsername      | String  | Yes      | -
 authorDisplayName   | String  | No       | -
@@ -79,9 +117,15 @@ likesCount          | Number  | No       | 0
 createdAt           | Date    | No       | Date.now
 ```
 
+**RLS settings for `comments` (required):**
+- enabled: `true`
+- mode: `owner-write-only`
+- ownerField: `userId`
+- requireAuthForWrite: `true`
+
 ---
 
-### 📝 STEP 4: Create `likes` Collection
+### 📝 STEP 5: Create `likes` Collection
 
 Create a new collection named **`likes`** with these fields:
 
@@ -96,9 +140,15 @@ createdAt     | Date    | No       | Date.now
 
 **Important:** Create a compound unique index on `userId + targetId` to prevent duplicate likes.
 
+**RLS settings for `likes` (required):**
+- enabled: `true`
+- mode: `owner-write-only`
+- ownerField: `userId`
+- requireAuthForWrite: `true`
+
 ---
 
-### 📝 STEP 5: Create `follows` Collection
+### 📝 STEP 6: Create `follows` Collection
 
 Create a new collection named **`follows`** with these fields:
 
@@ -112,6 +162,12 @@ createdAt     | Date    | No       | Date.now
 
 **Important:** Create a compound unique index on `followerId + followingId` to prevent duplicate follows.
 
+**RLS settings for `follows` (required):**
+- enabled: `true`
+- mode: `owner-write-only`
+- ownerField: `userId`
+- requireAuthForWrite: `true`
+
 ---
 
 ## ✅ Verification Checklist
@@ -121,11 +177,13 @@ After completing all steps, verify:
 - [ ] Authentication is enabled in urBackend dashboard
 - [ ] `users` collection exists with `email` and `password` fields
 - [ ] `users` collection has all 11 additional fields added
-- [ ] `posts` collection created with 11 fields
-- [ ] `comments` collection created with 8 fields
+- [ ] `posts` collection created with 12 fields
+- [ ] `profiles` collection created with 13 fields
+- [ ] `comments` collection created with 9 fields
 - [ ] `likes` collection created with 4 fields
 - [ ] `follows` collection created with 3 fields
-- [ ] Total: 5 collections in your urBackend project
+- [ ] RLS enabled on `posts`, `profiles`, `comments`, `likes`, `follows` with ownerField `userId`
+- [ ] Total: 6 collections in your urBackend project
 
 ---
 
@@ -133,7 +191,7 @@ After completing all steps, verify:
 
 1. Go to urBackend Dashboard → Project Settings
 2. Copy your **Public Key** (`pk_live_...`) 
-3. Copy your **Secret Key** (`sk_live_...`)
+3. Copy your **Secret Key** (`sk_live_...`) (needed only for `/storage/*` upload proxy)
 4. Paste them in your `.env` files (see main README.md)
 
 ---

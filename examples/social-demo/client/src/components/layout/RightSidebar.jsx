@@ -12,7 +12,7 @@ export default function RightSidebar() {
   const { data: suggestedUsers } = useQuery({
     queryKey: ['suggested-users'],
     queryFn: async () => {
-      const response = await dataApi.getUsers({ limit: 5 });
+      const response = await dataApi.getProfiles({ limit: 5, sort: 'followersCount:-1' });
       return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     },
   });
@@ -22,8 +22,8 @@ export default function RightSidebar() {
     queryKey: ['search-users', searchQuery],
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
-      const response = await dataApi.getUsers({
-        search: searchQuery
+      const response = await dataApi.getProfiles({
+        username: searchQuery.toLowerCase()
       });
       return Array.isArray(response.data) ? response.data : (response.data?.data || []);
     },
