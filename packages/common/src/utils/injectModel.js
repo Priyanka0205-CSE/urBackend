@@ -1,5 +1,6 @@
 const modelRegistry = new WeakMap();
 const mongoose = require("mongoose");
+const { UNIQUE_SUPPORTED_TYPES_SET } = require("./schema.constants");
 
 const typeMapping = {
   String: String,
@@ -7,8 +8,6 @@ const typeMapping = {
   Boolean: Boolean,
   Date: Date,
 };
-
-const UNIQUE_SUPPORTED_TYPES = new Set(["String", "Number", "Boolean", "Date"]);
 
 // Recursive field definition builder
 function buildFieldDef(field) {
@@ -125,12 +124,18 @@ function clearCompiledModel(connection, collectionName) {
   }
 }
 
-async function findDuplicates(Model, fieldKey) {
+function getUniqueFieldFilter(fieldKey, isRequired) {
+  if (isRequired) {
+    return { [fieldKey]: { $exists: true } };
+  }
+
+  return { [fieldKey]: { $exists: true, $ne: null } };
+}
+
+async function findDuplicates(Model, fieldKey, isRequired) {
   return Model.aggregate([
     {
-      $match: {
-        [fieldKey]: { $exists: true, $ne: null },
-      },
+      $match: getUniqueFieldFilter(fieldKey, isRequired),
     },
     {
       $group: {
@@ -152,9 +157,13 @@ async function createUniqueIndexes(Model, fields = []) {
   try {
     for (const field of fields) {
       if (!field.unique) continue;
-      if (!UNIQUE_SUPPORTED_TYPES.has(field.type)) continue;
+      if (!UNIQUE_SUPPORTED_TYPES_SET.has(field.type)) continue;
 
-      const duplicates = await findDuplicates(Model, field.key);
+      const duplicates = await findDuplicates(
+        Model,
+        field.key,
+        !!field.required,
+      );
 
       if (duplicates.length > 0) {
         const examples = duplicates
@@ -167,16 +176,20 @@ async function createUniqueIndexes(Model, fields = []) {
         );
       }
 
-      const indexName = `${field.key}_1`;
+      const indexName = `unique_${field.key}_1`;
 
-      await Model.collection.createIndex(
-        { [field.key]: 1 },
-        {
-          unique: true,
-          sparse: !field.required,
-          name: indexName,
-        },
-      );
+      const indexOptions = {
+        unique: true,
+        name: indexName,
+      };
+
+      if (!field.required) {
+        indexOptions.partialFilterExpression = {
+          [field.key]: { $exists: true, $ne: null },
+        };
+      }
+
+      await Model.collection.createIndex({ [field.key]: 1 }, indexOptions);
 
       createdIndexes.push(indexName);
     }

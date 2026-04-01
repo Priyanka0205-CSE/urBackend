@@ -1,0 +1,9 @@
+const MAX_FIELD_DEPTH = 3;
+const UNIQUE_SUPPORTED_TYPES = ["String", "Number", "Boolean", "Date"];
+const UNIQUE_SUPPORTED_TYPES_SET = new Set(UNIQUE_SUPPORTED_TYPES);
+
+module.exports = {
+  MAX_FIELD_DEPTH,
+  UNIQUE_SUPPORTED_TYPES,
+  UNIQUE_SUPPORTED_TYPES_SET,
+};

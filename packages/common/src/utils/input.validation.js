@@ -1,4 +1,8 @@
 const z = require("zod");
+const {
+  MAX_FIELD_DEPTH,
+  UNIQUE_SUPPORTED_TYPES,
+} = require("./schema.constants");
 
 module.exports.loginSchema = z.object({
   email: z
@@ -62,14 +66,16 @@ module.exports.createProjectSchema = z.object({
   description: z.string().optional(),
 });
 
-// FUNCTION - BUILD FIELD SCHEMA ZOD
-const MAX_FIELD_DEPTH = 3;
-const UNIQUE_SUPPORTED_TYPES = ["String", "Number", "Boolean", "Date"];
-
 const buildFieldSchemaZod = (depth = 1) => {
   const base = z
     .object({
-      key: z.string().min(1, "Field name is required"),
+      key: z
+        .string()
+        .min(1, "Field name is required")
+        .regex(/^(?!\$)(?!.*\.)\S+$/, {
+          message:
+            "Field name must not start with '$', contain '.', or include whitespace",
+        }),
       type: z.enum([
         "String",
         "Number",
@@ -120,13 +126,15 @@ const buildFieldSchemaZod = (depth = 1) => {
             (data.type === "Array" && data.items?.type === "Object"))
         )
           return false;
-        if (data.unique === true && !UNIQUE_SUPPORTED_TYPES.includes(data.type))
-          return false;
+        if (data.unique === true) {
+          if (depth > 1) return false;
+          if (!UNIQUE_SUPPORTED_TYPES.includes(data.type)) return false;
+        }
         return true;
       },
       {
         message:
-          "Invalid field configuration for the given type, or nesting depth exceeded (max 3 levels), or unique is not supported for this field type.",
+          "Invalid field configuration, nesting depth exceeded (max 3 levels), or unique is only supported for top-level primitive fields.",
       },
     );
 
@@ -146,7 +154,13 @@ module.exports.createCollectionSchema = z.object({
 const buildApiFieldSchemaZod = (depth = 1) => {
   const base = z
     .object({
-      name: z.string().min(1, "Field name is required"),
+      name: z
+        .string()
+        .min(1, "Field name is required")
+        .regex(/^(?!\$)(?!.*\.)\S+$/, {
+          message:
+            "Field name must not start with '$', contain '.', or include whitespace",
+        }),
       type: z.enum([
         "string",
         "number",
@@ -216,17 +230,16 @@ const buildApiFieldSchemaZod = (depth = 1) => {
                 "Object"))
         )
           return false;
-        if (
-          data.unique === true &&
-          !UNIQUE_SUPPORTED_TYPES.includes(normalType)
-        )
-          return false;
+        if (data.unique === true) {
+          if (depth > 1) return false;
+          if (!UNIQUE_SUPPORTED_TYPES.includes(normalType)) return false;
+        }
 
         return true;
       },
       {
         message:
-          "Invalid field configuration for the given type, or nesting depth exceeded (max 3 levels), or unique is not supported for this field type.",
+          "Invalid field configuration, nesting depth exceeded (max 3 levels), or unique is only supported for top-level primitive fields.",
       },
     );
 

@@ -8,17 +8,32 @@ const {
   getCompiledModel,
   clearCompiledModel,
   createUniqueIndexes,
+  generateApiKey,
 } = require("@urbackend/common");
-const { v4: uuidv4 } = require("uuid");
 const { z } = require("zod");
+
+const isNamespaceNotFoundError = (err) => {
+  return err && (err.code === 26 || /ns not found/i.test(err.message));
+};
+
+const dropCollectionIfExists = async (connection, collectionName) => {
+  try {
+    await connection.db.dropCollection(collectionName);
+  } catch (err) {
+    if (!isNamespaceNotFoundError(err)) {
+      throw err;
+    }
+  }
+};
 
 module.exports.checkSchema = async (req, res) => {
   try {
     const { collectionName } = req.params;
     const project = req.project;
 
-    if (!project)
+    if (!project) {
       return res.status(401).json({ error: "Project missing from request." });
+    }
 
     const collectionConfig = project.collections.find(
       (c) => c.name === collectionName,
@@ -38,12 +53,22 @@ module.exports.checkSchema = async (req, res) => {
 };
 
 module.exports.createSchema = async (req, res) => {
+  let fullProject;
+  let connection;
+  let compiledCollectionName;
+  let collectionWasPersisted = false;
+  let collectionNameForRollback;
+
   try {
     const { name, fields } = createSchemaApiKeySchema.parse(req.body);
+    collectionNameForRollback = name;
     const project = req.project;
+    if (!project) {
+      return res.status(401).json({ error: "Project missing from request." });
+    }
 
     const projectId = project._id;
-    const fullProject = await Project.findById(projectId);
+    fullProject = await Project.findById(projectId);
 
     if (!fullProject)
       return res.status(404).json({ error: "Project not found" });
@@ -54,7 +79,9 @@ module.exports.createSchema = async (req, res) => {
         .status(400)
         .json({ error: "Collection/Schema already exists" });
 
-    if (!fullProject.jwtSecret) fullProject.jwtSecret = uuidv4();
+    if (!fullProject.jwtSecret) {
+      fullProject.jwtSecret = generateApiKey("jwt_");
+    }
 
     // Recursive field transformer (API uses 'name', internal uses 'key')
     function transformField(f) {
@@ -90,38 +117,27 @@ module.exports.createSchema = async (req, res) => {
 
     const transformedFields = (fields || []).map((f) => transformField(f));
 
+    compiledCollectionName = fullProject.resources.db.isExternal
+      ? name
+      : `${fullProject._id}_${name}`;
+
     fullProject.collections.push({ name, model: transformedFields });
     await fullProject.save();
+    collectionWasPersisted = true;
 
-    try {
-      const collectionConfig = fullProject.collections.find(
-        (c) => c.name === name,
-      );
+    const collectionConfig = fullProject.collections.find(
+      (c) => c.name === name,
+    );
 
-      const connection = await getConnection(fullProject._id);
-      const Model = getCompiledModel(
-        connection,
-        collectionConfig,
-        fullProject._id,
-        fullProject.resources.db.isExternal,
-      );
+    connection = await getConnection(fullProject._id);
+    const Model = getCompiledModel(
+      connection,
+      collectionConfig,
+      fullProject._id,
+      fullProject.resources.db.isExternal,
+    );
 
-      await createUniqueIndexes(Model, collectionConfig.model);
-    } catch (error) {
-      const compiledCollectionName = fullProject.resources.db.isExternal
-        ? name
-        : `${fullProject._id}_${name}`;
-
-      const connection = await getConnection(fullProject._id);
-      clearCompiledModel(connection, compiledCollectionName);
-
-      fullProject.collections = fullProject.collections.filter(
-        (c) => c.name !== name,
-      );
-      await fullProject.save();
-
-      return res.status(400).json({ error: error.message });
-    }
+    await createUniqueIndexes(Model, collectionConfig.model);
 
     // Clear redis cache
     await deleteProjectById(projectId.toString());
@@ -137,13 +153,31 @@ module.exports.createSchema = async (req, res) => {
     delete projectObj.secretKey;
     delete projectObj.jwtSecret;
 
-    res
+    return res
       .status(201)
       .json({ message: "Schema created successfully", project: projectObj });
   } catch (err) {
-    if (err instanceof z.ZodError)
+    try {
+      if (fullProject && collectionWasPersisted) {
+        fullProject.collections = fullProject.collections.filter(
+          (c) => c.name !== collectionNameForRollback,
+        );
+        await fullProject.save();
+      }
+
+      if (connection && compiledCollectionName) {
+        clearCompiledModel(connection, compiledCollectionName);
+        await dropCollectionIfExists(connection, compiledCollectionName);
+      }
+    } catch (rollbackErr) {
+      console.error("Create schema rollback failed:", rollbackErr);
+    }
+
+    if (err instanceof z.ZodError) {
       return res.status(400).json({ error: err.errors });
+    }
+
     console.error(err);
-    res.status(500).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };

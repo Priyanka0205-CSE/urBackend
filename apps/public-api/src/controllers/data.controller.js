@@ -10,7 +10,7 @@ const { validateData, validateUpdateData } = require("@urbackend/common");
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 const isDuplicateKeyError = (err) => {
-  return err && (err.code === 11000 || err.name === "MongoServerError");
+  return err && err.code === 11000;
 };
 
 // INSERT DATA

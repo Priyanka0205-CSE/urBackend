@@ -28,7 +28,6 @@ const {
   isProjectDbExternal,
   getBucket,
 } = require("@urbackend/common");
-const { v4: uuidv4 } = require("uuid");
 const { getPublicIp } = require("@urbackend/common");
 const { clearCompiledModel } = require("@urbackend/common");
 const { createUniqueIndexes } = require("@urbackend/common");
@@ -202,6 +201,19 @@ module.exports.regenerateApiKey = async (req, res) => {
   }
 };
 
+const isNamespaceNotFoundError = (err) => {
+  return err && (err.code === 26 || /ns not found/i.test(err.message));
+};
+
+const dropCollectionIfExists = async (connection, collectionName) => {
+  try {
+    await connection.db.dropCollection(collectionName);
+  } catch (err) {
+    if (!isNamespaceNotFoundError(err)) {
+      throw err;
+    }
+  }
+};
 // VALIDATE URI
 const isSafeUri = (uri) => {
   try {
@@ -369,12 +381,20 @@ module.exports.deleteExternalStorageConfig = async (req, res) => {
 
 // POST REQ FOR CREATE COLLECTION
 module.exports.createCollection = async (req, res) => {
+  let project;
+  let connection;
+  let compiledCollectionName;
+  let collectionWasPersisted = false;
+  let collectionNameForRollback;
+
   try {
     const { projectId, collectionName, schema } = createCollectionSchema.parse(
       req.body,
     );
 
-    const project = await Project.findOne({
+    collectionNameForRollback = collectionName;
+
+    project = await Project.findOne({
       _id: projectId,
       owner: req.user._id,
     });
@@ -384,7 +404,9 @@ module.exports.createCollection = async (req, res) => {
     if (exists)
       return res.status(400).json({ error: "Collection already exists" });
 
-    if (!project.jwtSecret) project.jwtSecret = uuidv4();
+    if (!project.jwtSecret) {
+      project.jwtSecret = generateApiKey("jwt_");
+    }
 
     if (collectionName === "users") {
       if (!validateUsersSchema(schema)) {
@@ -395,38 +417,28 @@ module.exports.createCollection = async (req, res) => {
       }
     }
 
+    compiledCollectionName = project.resources.db.isExternal
+      ? collectionName
+      : `${project._id}_${collectionName}`;
+
     project.collections.push({ name: collectionName, model: schema });
     await project.save();
+    collectionWasPersisted = true;
 
-    try {
-      const collectionConfig = project.collections.find(
-        (c) => c.name === collectionName,
-      );
+    const collectionConfig = project.collections.find(
+      (c) => c.name === collectionName,
+    );
 
-      const connection = await getConnection(projectId);
-      const Model = getCompiledModel(
-        connection,
-        collectionConfig,
-        projectId,
-        project.resources.db.isExternal,
-      );
+    connection = await getConnection(projectId);
 
-      await createUniqueIndexes(Model, collectionConfig.model);
-    } catch (error) {
-      const compiledCollectionName = project.resources.db.isExternal
-        ? collectionName
-        : `${project._id}_${collectionName}`;
+    const Model = getCompiledModel(
+      connection,
+      collectionConfig,
+      projectId,
+      project.resources.db.isExternal,
+    );
 
-      const connection = await getConnection(projectId);
-      clearCompiledModel(connection, compiledCollectionName);
-
-      project.collections = project.collections.filter(
-        (c) => c.name !== collectionName,
-      );
-      await project.save();
-
-      return res.status(400).json({ error: error.message });
-    }
+    await createUniqueIndexes(Model, collectionConfig.model);
 
     await deleteProjectById(projectId);
     await setProjectById(projectId, project);
@@ -438,11 +450,29 @@ module.exports.createCollection = async (req, res) => {
     delete projectObj.secretKey;
     delete projectObj.jwtSecret;
 
-    res.status(201).json(projectObj);
+    return res.status(201).json(projectObj);
   } catch (err) {
-    if (err instanceof z.ZodError)
+    try {
+      if (project && collectionWasPersisted) {
+        project.collections = project.collections.filter(
+          (c) => c.name !== collectionNameForRollback,
+        );
+        await project.save();
+      }
+
+      if (connection && compiledCollectionName) {
+        clearCompiledModel(connection, compiledCollectionName);
+        await dropCollectionIfExists(connection, compiledCollectionName);
+      }
+    } catch (rollbackErr) {
+      console.error("Create collection rollback failed:", rollbackErr);
+    }
+
+    if (err instanceof z.ZodError) {
       return res.status(400).json({ error: err.errors });
-    res.status(500).json({ error: err.message });
+    }
+
+    return res.status(400).json({ error: err.message });
   }
 };
 
@@ -454,10 +484,11 @@ module.exports.deleteCollection = async (req, res) => {
       _id: projectId,
       owner: req.user._id,
     });
-    if (!project)
+    if (!project) {
       return res
         .status(404)
         .json({ error: "Project not found or access denied." });
+    }
 
     const collectionIndex = project.collections.findIndex(
       (c) => c.name === collectionName,
@@ -467,82 +498,29 @@ module.exports.deleteCollection = async (req, res) => {
     }
 
     const isExternal = project.resources?.db?.isExternal;
-
     const connection = await getConnection(projectId);
 
     const finalCollectionName = isExternal
       ? collectionName
       : `${project._id}_${collectionName}`;
 
-    try {
-      await connection.db.dropCollection(finalCollectionName);
-    } catch (e) {
-      console.warn(
-        "Failed to drop collection (might not exist):",
-        finalCollectionName,
-        e.message,
-      );
-    }
+    await dropCollectionIfExists(connection, finalCollectionName);
+    clearCompiledModel(connection, finalCollectionName);
 
     project.collections.splice(collectionIndex, 1);
     await project.save();
 
     await deleteProjectById(projectId);
     await setProjectById(projectId, project);
+    await deleteProjectByApiKeyCache(project.publishableKey);
+    await deleteProjectByApiKeyCache(project.secretKey);
 
-    res.json({
+    return res.json({
       message: `Collection '${collectionName}' deleted successfully.`,
     });
   } catch (err) {
     console.error("Delete Collection Error:", err);
-    res.status(500).json({ error: err.message });
-  }
-};
-
-module.exports.getData = async (req, res) => {
-  try {
-    const { projectId, collectionName } = req.params;
-    const project = await Project.findOne({
-      _id: projectId,
-      owner: req.user._id,
-    });
-    if (!project) return res.status(404).json({ error: "Project not found." });
-
-    const collectionConfig = project.collections.find(
-      (c) => c.name === collectionName,
-    );
-    if (!collectionConfig) {
-      return res.status(404).json({
-        error: "Collection not found",
-        collection: collectionName,
-      });
-    }
-
-    const connection = await getConnection(projectId);
-    const model = getCompiledModel(
-      connection,
-      collectionConfig,
-      projectId,
-      project.resources.db.isExternal,
-    );
-
-    // const collectionsList = await mongoose.connection.db.listCollections({ name: finalCollectionName }).toArray();
-
-    const query = model.find();
-    if (collectionName === "users") {
-      query.select("-password");
-    }
-
-    const features = new QueryEngine(query, req.query)
-      .filter()
-      .sort()
-      .paginate();
-
-    const data = await features.query.lean();
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -714,12 +692,15 @@ module.exports.editRow = async (req, res) => {
       if (currentUsed + sizeDiff > limit) {
         return res.status(403).json({ error: "Database limit exceeded." });
       }
-
-      project.databaseUsed = Math.max(0, currentUsed + sizeDiff);
-      await project.save();
     }
 
     const updatedDoc = await docToEdit.save();
+
+    if (!project.resources.db.isExternal) {
+      const currentUsed = project.databaseUsed || 0;
+      project.databaseUsed = Math.max(0, currentUsed + sizeDiff);
+      await project.save();
+    }
     const responseData = updatedDoc.toObject();
     if (collectionName === "users") {
       delete responseData.password;
