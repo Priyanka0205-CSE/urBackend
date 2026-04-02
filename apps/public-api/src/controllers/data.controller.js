@@ -1,3 +1,4 @@
+const { randomUUID } = require("crypto");
 const { sanitize } = require("@urbackend/common");
 const mongoose = require('mongoose');
 const { Project } = require("@urbackend/common");
@@ -12,7 +13,9 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 // INSERT DATA
 module.exports.insertData = async (req, res) => {
     try {
-        if (process.env.DEBUG === 'true') console.time("insert data")
+        const isDebug = process.env.DEBUG === 'true';
+        const timerLabel = isDebug ? `insert data - ${randomUUID()}` : null;
+        if (isDebug) console.time(timerLabel);
         const { collectionName } = req.params;
         const project = req.project;
 
@@ -48,7 +51,7 @@ module.exports.insertData = async (req, res) => {
             );
         }
 
-        if (process.env.DEBUG === 'true') console.timeEnd("insert data")
+        if (isDebug) console.timeEnd(timerLabel);
         res.status(201).json(result);
     } catch (err) {
         console.error(err);
@@ -59,7 +62,9 @@ module.exports.insertData = async (req, res) => {
 // GET ALL DATA
 module.exports.getAllData = async (req, res) => {
     try {
-        if (process.env.DEBUG === 'true') console.time("getall")
+        const isDebug = process.env.DEBUG === 'true';
+        const timerLabel = isDebug ? `getall - ${randomUUID()}` : null;
+        if (isDebug) console.time(timerLabel);
         const { collectionName } = req.params;
         const project = req.project;
 
@@ -75,7 +80,7 @@ module.exports.getAllData = async (req, res) => {
             .paginate();
 
         const data = await features.query.lean();
-        if (process.env.DEBUG === 'true') console.timeEnd("getall")
+        if (isDebug) console.timeEnd(timerLabel);
         res.json(data);
     } catch (err) {
         console.error(err);
