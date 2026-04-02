@@ -14,7 +14,7 @@ const cors = require('cors')
 const cookieParser = require('cookie-parser');
 const app = express();
 app.set('trust proxy', 1);
-const { garbageCollect, storageGarbageCollect, getPublicIp } = require('@urbackend/common');
+const { garbageCollect, storageGarbageCollect, getPublicIp, standardizeApiResponse } = require('@urbackend/common');
 const { capture } = require('@kiroo/sdk');
 
 
@@ -24,6 +24,7 @@ const {authEmailQueue} = require('@urbackend/common');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(standardizeApiResponse);
 app.use(cors());
 app.use(cookieParser());
 

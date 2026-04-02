@@ -24,9 +24,10 @@ const { authEmailQueue } = require("./queues/authEmailQueue");
 const { emailQueue } = require("./queues/emailQueue");
 
 // Middleware
-const checkAuthEnabled = require("./middleware/checkAuthEnabled");
-const verifyEmail = require("./middleware/verifyEmail");
-const loadProjectForAdmin = require("./middleware/loadProjectForAdmin");
+const checkAuthEnabled = require('./middleware/checkAuthEnabled')
+const verifyEmail = require('./middleware/verifyEmail')
+const loadProjectForAdmin = require('./middleware/loadProjectForAdmin')
+const standardizeApiResponse = require('./middleware/standardizeApiResponse')
 
 // Utils
 const {
@@ -118,6 +119,7 @@ module.exports = {
   verifyEmail,
   validateEnv,
   loadProjectForAdmin,
+  standardizeApiResponse,
   setProjectByApiKeyCache,
   getProjectByApiKeyCache,
   deleteProjectByApiKeyCache,
