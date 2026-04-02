@@ -144,7 +144,7 @@ function clearCompiledModel(connection, collectionName) {
 
 function getUniqueFieldFilter(fieldKey, isRequired) {
   if (isRequired) {
-    return { [fieldKey]: { $exists: true } };
+    return {}; // scan ALL docs, including those missing the field
   }
 
   return { [fieldKey]: { $exists: true, $ne: null } };
@@ -170,44 +170,62 @@ async function findDuplicates(Model, fieldKey, isRequired) {
 }
 
 async function createUniqueIndexes(Model, fields = []) {
-  for (const field of fields) {
-    if (!field.unique) continue;
-    if (!UNIQUE_SUPPORTED_TYPES_SET.has(field.type)) continue;
+  const createdIndexes = [];
 
-    const normalizedKey = normalizeKey(field.key);
-    if (!normalizedKey) continue;
+  const existingIndexes = await Model.collection.indexes();
+  const existingIndexNames = new Set(existingIndexes.map((idx) => idx.name));
 
-    const duplicates = await findDuplicates(
-      Model,
-      normalizedKey,
-      !!field.required,
-    );
+  try {
+    for (const field of fields) {
+      if (!field.unique) continue;
+      if (!UNIQUE_SUPPORTED_TYPES_SET.has(field.type)) continue;
 
-    if (duplicates.length > 0) {
-      const examples = duplicates
-        .slice(0, 3)
-        .map((d) => JSON.stringify(d._id))
-        .join(", ");
+      const normalizedKey = normalizeKey(field.key);
+      if (!normalizedKey) continue;
 
-      throw new Error(
-        `Cannot create unique index on '${normalizedKey}'. ${duplicates.length} duplicate values exist.${examples ? ` Examples: ${examples}` : ""}`,
+      const duplicates = await findDuplicates(
+        Model,
+        normalizedKey,
+        !!field.required,
       );
-    }
 
-    const indexName = `unique_${normalizedKey}_1`;
+      if (duplicates.length > 0) {
+        const examples = duplicates
+          .slice(0, 3)
+          .map((d) => JSON.stringify(d._id))
+          .join(", ");
 
-    const indexOptions = {
-      unique: true,
-      name: indexName,
-    };
+        throw new Error(
+          `Cannot create unique index on '${normalizedKey}'. ${duplicates.length} duplicate values exist.${examples ? ` Examples: ${examples}` : ""}`,
+        );
+      }
 
-    if (!field.required) {
-      indexOptions.partialFilterExpression = {
-        [normalizedKey]: { $exists: true, $ne: null },
+      const indexName = `unique_${normalizedKey}_1`;
+
+      const indexOptions = {
+        unique: true,
+        name: indexName,
       };
-    }
 
-    await Model.collection.createIndex({ [normalizedKey]: 1 }, indexOptions);
+      if (!field.required) {
+        indexOptions.partialFilterExpression = {
+          [normalizedKey]: { $exists: true, $ne: null },
+        };
+      }
+
+      const createdName = await Model.collection.createIndex(
+        { [normalizedKey]: 1 },
+        indexOptions,
+      );
+      if (!existingIndexNames.has(createdName)) {
+        createdIndexes.push(createdName);
+      }
+    }
+  } catch (err) {
+    for (const indexName of createdIndexes) {
+      await Model.collection.dropIndex(indexName).catch(() => {});
+    }
+    throw err;
   }
 }
 
