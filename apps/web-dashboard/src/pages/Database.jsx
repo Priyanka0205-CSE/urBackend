@@ -782,8 +782,13 @@ export default function Database() {
                 onChange={(e) => setRlsEnabled(e.target.checked)}
                 style={{ accentColor: "var(--color-primary)" }}
               />
-              <span>Enable RLS for publishable-key writes</span>
+              <span>Enable RLS access rules for publishable-key requests</span>
             </label>
+            <p className="rls-help-text">
+              {rlsMode === "private"
+                ? "When enabled, publishable-key access is restricted to the owner for both reads and writes."
+                : "When enabled, publishable-key writes are restricted to the owner. Reads remain available according to the selected access mode."}
+            </p>
 
             <div className="rls-owner-field-group">
               <label htmlFor="rls-mode">Access Mode</label>

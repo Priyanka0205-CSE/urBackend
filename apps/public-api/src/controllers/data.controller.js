@@ -103,8 +103,14 @@ module.exports.getAllData = async (req, res) => {
     );
 
     const baseFilter = req.rlsFilter && typeof req.rlsFilter === 'object' ? req.rlsFilter : {};
-    const features = new QueryEngine(Model.find(baseFilter), req.query)
-      .filter()
+    const features = new QueryEngine(Model.find(), req.query)
+      .filter();
+
+    if (Object.keys(baseFilter).length > 0) {
+      features.query = features.query.and([baseFilter]);
+    }
+
+    features
       .sort()
       .paginate();
 

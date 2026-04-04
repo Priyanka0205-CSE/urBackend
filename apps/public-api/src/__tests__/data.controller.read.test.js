@@ -1,15 +1,22 @@
 'use strict';
 
 const mockFind = jest.fn();
+const mockAnd = jest.fn();
 const mockFindOne = jest.fn();
+const mockQueryLean = jest.fn().mockResolvedValue([]);
 
-const mockQueryEngine = jest.fn((query) => ({
-    filter: () => ({
-        sort: () => ({
-            paginate: () => ({ query }),
-        }),
-    }),
-}));
+// mockAnd returns an object with .lean() so features.query.lean() works after .and()
+mockAnd.mockReturnValue({ lean: mockQueryLean });
+
+const mockQueryEngine = jest.fn((query) => {
+    const engine = {
+        query,
+        filter() { return engine; },
+        sort() { return engine; },
+        paginate() { return engine; },
+    };
+    return engine;
+});
 
 jest.mock('@urbackend/common', () => ({
     sanitize: (v) => v,
@@ -18,7 +25,7 @@ jest.mock('@urbackend/common', () => ({
     getCompiledModel: jest.fn(() => ({
         find: (...args) => {
             mockFind(...args);
-            return { lean: jest.fn().mockResolvedValue([]) };
+            return { and: mockAnd, lean: mockQueryLean };
         },
         findOne: (...args) => {
             mockFindOne(...args);
@@ -75,7 +82,8 @@ describe('data.controller read RLS filters', () => {
 
         await getAllData(req, res);
 
-        expect(mockFind).toHaveBeenCalledWith({ userId: 'user_1' });
+        expect(mockFind).toHaveBeenCalledWith();
+        expect(mockAnd).toHaveBeenCalledWith([{ userId: 'user_1' }]);
         expect(res.json).toHaveBeenCalled();
     });
 
@@ -86,8 +94,10 @@ describe('data.controller read RLS filters', () => {
         await getSingleDoc(req, res);
 
         expect(mockFindOne).toHaveBeenCalledWith({
-            _id: '507f1f77bcf86cd799439011',
-            userId: 'user_1',
+            $and: [
+                { _id: '507f1f77bcf86cd799439011' },
+                { userId: 'user_1' },
+            ],
         });
         expect(res.json).toHaveBeenCalled();
     });
