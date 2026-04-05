@@ -23,6 +23,7 @@ export default function RecordList({ data, activeCollection, onView }) {
                         <div
                             key={record._id}
                             className="record-card glass-panel"
+                            aria-label={`View details for record ${record._id}`}
                             onClick={() => onView(record)}
                         >
                             <div className="record-main-info">

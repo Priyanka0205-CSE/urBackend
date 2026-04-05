@@ -181,6 +181,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                             className="btn-icon"
                             onClick={() => onView(info.row.original)}
                             onPointerDown={e => e.stopPropagation()}
+                            aria-label="View Details"
                             title="View Details"
                         >
                             <Eye size={15} />
@@ -189,6 +190,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                             className="btn-icon"
                             onClick={() => onEdit(info.row.original)}
                             onPointerDown={e => e.stopPropagation()}
+                            aria-label="Edit Record"
                             title="Edit"
                         >
                             <Pencil size={15} />
@@ -197,6 +199,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                             className="btn-icon danger-hover"
                             onClick={() => onDelete(info.row.original._id)}
                             onPointerDown={e => e.stopPropagation()}
+                            aria-label="Delete Record"
                             title="Delete"
                         >
                             <Trash2 size={15} />
@@ -361,6 +364,9 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                 <div style={{ position: 'relative' }}>
                     <button
                         className="btn btn-secondary btn-sm"
+                        aria-label={showColumnMenu ? "Close column menu" : "Open column menu"}
+                        aria-hashpopup="menu"
+                        aria-expanded={showColumnMenu}
                         onClick={() => setShowColumnMenu(!showColumnMenu)}
                         style={{
                             display: 'flex',
@@ -556,6 +562,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                         value={scrollState.scrollLeft}
                         onChange={handleSliderChange}
                         onInput={handleSliderChange}
+                        aria-label="Scroll table horizontally"
                         style={{ width: '100%', cursor: 'ew-resize' }}
                         className="column-slider"
                     />
