@@ -7,7 +7,14 @@ const {
 
 module.exports = async (req, res, next) => {
     try {
-        const apiKey = req.header('x-api-key') || req.query.key;
+        // x-api-key header is preferred. For browser-navigation endpoints (e.g. social OAuth start),
+        // fall back to ?key= query param but only allow publishable keys via query to avoid
+        // secret key exposure in server access logs.
+        const headerKey = req.header('x-api-key');
+        const queryKey = req.query.key && !String(req.query.key).startsWith('sk_live_')
+            ? req.query.key
+            : undefined;
+        const apiKey = headerKey || queryKey;
         if (!apiKey) {
             return res.status(401).json({ error: 'API key not found' });
         }
