@@ -16,7 +16,7 @@ const developerSchema = new mongoose.Schema({
     },
     maxProjects: {
         type: Number,
-        default: 3
+        default: 1
     },
     refreshToken: {
         type: String,

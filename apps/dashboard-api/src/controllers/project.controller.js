@@ -189,7 +189,7 @@ module.exports.createProject = async (req, res) => {
 
     // GET MAX PROJECTS
     const dev = await Developer.findById(req.user._id);
-    const MAX_PROJECTS = dev?.maxProjects || 3;
+    const MAX_PROJECTS = dev?.maxProjects || 1;
 
     const isUserAdmin = dev.email === ADMIN_EMAIL;
     const projectCount = await Project.countDocuments({ owner: req.user._id });

@@ -263,9 +263,25 @@ module.exports.resetPassword = async (req, res) => {
         await otpDoc.deleteOne();
         const salt = await bcrypt.genSalt(10);
         dev.password = await bcrypt.hash(newPassword, salt);
+        // Invalidate existing dashboard refresh sessions after a successful reset.
+        dev.refreshToken = null;
         await dev.save();
 
-        res.status(200).json({ message: "Password reset successfully. Please log in with your new password." });
+        res
+            .status(200)
+            .cookie('accessToken', 'none', {
+                expires: new Date(Date.now() + 10 * 1000),
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+            })
+            .cookie('refreshToken', 'none', {
+                expires: new Date(Date.now() + 10 * 1000),
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+            })
+            .json({ message: "Password reset successfully. Please log in with your new password." });
     } catch (err) {
         if (err.status) return res.status(err.status).json({ error: err.message });
         if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
@@ -323,7 +339,6 @@ module.exports.refreshToken = async (req, res) => {
 
         await sendTokenResponse(user, 200, res);
     } catch (err) {
-        console.error(err);
         res.status(403).json({ error: "Invalid or expired refresh token" });
     }
 };

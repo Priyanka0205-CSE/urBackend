@@ -20,6 +20,7 @@ import Docs from './pages/Docs';
 import Auth from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
 import OtpVerification from './pages/OtpVerification';
+import ForgotPassword from './pages/ForgotPassword';
 import Settings from './pages/Settings';
 import ProjectSettings from './pages/ProjectSettings';
 
@@ -44,6 +45,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<OtpVerification />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
 
 

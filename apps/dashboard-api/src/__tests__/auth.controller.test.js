@@ -472,4 +472,55 @@ describe('auth.controller', () => {
             );
         });
     });
+
+    // -----------------------------------------------------------------------
+    describe('resetPassword', () => {
+        test('clears stored refresh token after successful password reset', async () => {
+            const mockOtpDoc = {
+                attempts: 0,
+                otp: 'hashed_otp',
+                deleteOne: jest.fn().mockResolvedValue(undefined),
+                save: jest.fn().mockResolvedValue(undefined),
+            };
+            const mockUser = {
+                _id: 'dev_id_1',
+                email: 'test@example.com',
+                password: 'old_hashed_password',
+                refreshToken: 'active_refresh_token',
+                save: jest.fn().mockResolvedValue(undefined),
+            };
+
+            Developer.findOne.mockResolvedValue(mockUser);
+            Otp.findOne.mockResolvedValue(mockOtpDoc);
+            bcrypt.compare.mockResolvedValue(true);
+            bcrypt.genSalt.mockResolvedValue('salt');
+            bcrypt.hash.mockResolvedValue('new_hashed_password');
+
+            const req = makeReq({
+                email: 'test@example.com',
+                otp: '123456',
+                newPassword: 'newpassword123',
+            });
+            const res = makeRes();
+
+            await authController.resetPassword(req, res);
+
+            expect(mockUser.refreshToken).toBeNull();
+            expect(mockUser.save).toHaveBeenCalled();
+            expect(res.cookie).toHaveBeenCalledWith(
+                'accessToken',
+                'none',
+                expect.objectContaining({ httpOnly: true })
+            );
+            expect(res.cookie).toHaveBeenCalledWith(
+                'refreshToken',
+                'none',
+                expect.objectContaining({ httpOnly: true })
+            );
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({
+                message: 'Password reset successfully. Please log in with your new password.'
+            });
+        });
+    });
 });

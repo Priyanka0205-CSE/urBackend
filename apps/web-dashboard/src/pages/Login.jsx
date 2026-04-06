@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Code, Terminal } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 
 function Login() {
-    const [formData, setFormData] = useState({ email: '', password: '' });
+    const location = useLocation();
+    const [formData, setFormData] = useState({ email: location.state?.email || '', password: '' });
     const [isLoading, setIsLoading] = useState(false);
 
     const navigate = useNavigate();
@@ -116,6 +117,13 @@ function Login() {
                     <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                             <label className="form-label" style={{ marginBottom: 0, fontSize: '0.9rem' }}>Password</label>
+                            <Link
+                                to="/forgot-password"
+                                state={{ email: formData.email }}
+                                style={{ color: 'var(--color-primary)', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 500 }}
+                            >
+                                Forgot password?
+                            </Link>
                         </div>
                         <input
                             type="password"

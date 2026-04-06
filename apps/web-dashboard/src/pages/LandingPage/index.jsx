@@ -569,7 +569,7 @@ function LandingPage() {
                             <div style={{ fontSize: '3rem', fontWeight: 800, color: '#fff', marginBottom: '1rem' }}>$0<span style={{ fontSize: '1rem', color: '#666', fontWeight: 400 }}>/mo</span></div>
                             <p style={{ color: '#888', marginBottom: '2rem', fontSize: '0.95rem' }}>Perfect for side projects, MVPs, and learning.</p>
                             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2rem 0', display: 'grid', gap: '12px' }}>
-                                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ccc' }}><CheckCircle size={16} color="#00f5d4" /> Create upto 3 projects</li>
+                                <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ccc' }}><CheckCircle size={16} color="#00f5d4" /> Create 1 free project</li>
                                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ccc' }}><CheckCircle size={16} color="#00f5d4" /> 500MB Storage</li>
                                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ccc' }}><CheckCircle size={16} color="#00f5d4" /> Community Support</li>
                                 <li style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#ccc' }}><CheckCircle size={16} color="#00f5d4" /> BYO Infrastructure</li>
@@ -629,7 +629,7 @@ function LandingPage() {
 
                     <div className="faq-list">
                         {[
-                            { q: "Is it really free?", a: "Yes, our Public Beta is free for developers. Create upto 3 projects per account while we refine the platform." },
+                            { q: "Is it really free?", a: "Yes, our Public Beta is free for developers. New accounts can create 1 free project while we refine the platform." },
                             { q: "Can I use this for production?", a: "While we are stable, we recommend urBackend for side-projects, hackathons, and MVPs initially." },
                             { q: "Can I use this with React/Next.js?", a: "Yes. urBackend outputs standard REST APIs, so it works with any frontend framework. However, since the API Key grants write access, we recommend calling it from a server-side environment (like Next.js API routes) to keep your key secure." },
                             { q: "How does it handle security?", a: "We use industry-standard encryption, automatic API key validation, and JWT for user sessions." },
