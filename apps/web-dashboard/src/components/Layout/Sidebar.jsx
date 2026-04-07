@@ -2,7 +2,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     LayoutDashboard, Database, Shield, HardDrive, Settings, BarChart2,
-    ArrowLeft, FileText, UserCog, LogOut, X, Rocket // Import Rocket
+    ArrowLeft, FileText, UserCog, LogOut, X, Rocket, Webhook // Import Webhook
 } from 'lucide-react';
 
 function Sidebar({ logo, isOpen, onClose }) { // Props received
@@ -56,6 +56,10 @@ function Sidebar({ logo, isOpen, onClose }) { // Props received
                         <Link to={`/project/${projectId}/auth`} onClick={handleNavClick} className={`nav-item ${isActive(`/project/${projectId}/auth`) ? 'active' : ''}`}>
                             <Shield size={18} /> <span>Authentication</span>
                         </Link>
+                        <Link to={`/project/${projectId}/webhooks`} onClick={handleNavClick} className={`nav-item ${isActive(`/project/${projectId}/webhooks`) ? 'active' : ''}`}>
+                            <Webhook size={18} /> <span>Webhooks</span>
+                        </Link>
+
                         <Link to={`/project/${projectId}/storage`} onClick={handleNavClick} className={`nav-item ${isActive(`/project/${projectId}/storage`) ? 'active' : ''}`}>
                             <HardDrive size={18} /> <span>Storage</span>
                         </Link>

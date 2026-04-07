@@ -6,6 +6,7 @@ const { getCompiledModel } = require("@urbackend/common");
 const { QueryEngine } = require("@urbackend/common");
 const { validateData, validateUpdateData } = require("@urbackend/common");
 const { performance } = require('perf_hooks');
+const { dispatchWebhooks } = require('../utils/webhookDispatcher');
 
 const isDebug = process.env.DEBUG === 'true';
 
@@ -63,6 +64,15 @@ module.exports.insertData = async (req, res) => {
         { $inc: { databaseUsed: docSize } },
       );
     }
+
+    // Fire-and-forget webhook dispatch
+    dispatchWebhooks({
+      projectId: project._id,
+      collection: collectionName,
+      action: 'insert',
+      document: result.toObject ? result.toObject() : result,
+      documentId: result._id,
+    });
 
     if (isDebug) console.log(`[DEBUG] insert data took ${(performance.now() - start).toFixed(2)}ms`);
     res.status(201).json(result);
@@ -201,6 +211,15 @@ module.exports.updateSingleData = async (req, res) => {
 
     if (!result) return res.status(404).json({ error: "Document not found." });
 
+    // Fire-and-forget webhook dispatch
+    dispatchWebhooks({
+      projectId: project._id,
+      collection: collectionName,
+      action: 'update',
+      document: result,
+      documentId: result._id,
+    });
+
     res.json({ message: "Updated", data: result });
   } catch (err) {
     console.error(err);
@@ -243,6 +262,9 @@ module.exports.deleteSingleDoc = async (req, res) => {
     if (!docToDelete)
       return res.status(404).json({ error: "Document not found." });
 
+    // Capture document data before deletion for webhook
+    const deletedDoc = docToDelete.toObject ? docToDelete.toObject() : { ...docToDelete._doc };
+
     let docSize = 0;
     if (!project.resources.db.isExternal) {
       docSize = Buffer.byteLength(JSON.stringify(docToDelete));
@@ -254,6 +276,15 @@ module.exports.deleteSingleDoc = async (req, res) => {
       let databaseUsed = Math.max(0, (project.databaseUsed || 0) - docSize);
       await Project.updateOne({ _id: project._id }, { $set: { databaseUsed } });
     }
+
+    // Fire-and-forget webhook dispatch
+    dispatchWebhooks({
+      projectId: project._id,
+      collection: collectionName,
+      action: 'delete',
+      document: deletedDoc,
+      documentId: id,
+    });
 
     res.json({ message: "Document deleted", id });
   } catch (err) {

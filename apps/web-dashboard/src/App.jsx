@@ -23,6 +23,7 @@ import OtpVerification from './pages/OtpVerification';
 import ForgotPassword from './pages/ForgotPassword';
 import Settings from './pages/Settings';
 import ProjectSettings from './pages/ProjectSettings';
+import Webhooks from './pages/Webhooks';
 
 
 
@@ -99,6 +100,8 @@ function App() {
         } />
 
         <Route path="/project/:projectId/auth" element={<ProtectedRoute><MainLayout><Auth /></MainLayout></ProtectedRoute>} />
+
+        <Route path="/project/:projectId/webhooks" element={<ProtectedRoute><MainLayout><Webhooks /></MainLayout></ProtectedRoute>} />
 
         <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
 

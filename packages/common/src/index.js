@@ -18,10 +18,18 @@ const Project = require("./models/Project");
 const Release = require("./models/Release");
 const Log = require("./models/Log");
 const Otp = require("./models/otp");
+const Webhook = require("./models/Webhook");
+const WebhookDelivery = require("./models/WebhookDelivery");
 
 // Queues
 const { authEmailQueue } = require("./queues/authEmailQueue");
 const { emailQueue } = require("./queues/emailQueue");
+const {
+  webhookQueue,
+  enqueueWebhookDelivery,
+  initWebhookWorker,
+  generateSignature,
+} = require("./queues/webhookQueue");
 
 // Middleware
 const checkAuthEnabled = require('./middleware/checkAuthEnabled')
@@ -50,6 +58,8 @@ const {
   userSignupSchema,
   updateExternalConfigSchema,
   updateAuthProvidersSchema,
+  createWebhookSchema,
+  updateWebhookSchema,
 } = require("./utils/input.validation");
 const { garbageCollect, storageGarbageCollect } = require("./utils/GC");
 const { generateApiKey, hashApiKey } = require("./utils/api");
@@ -81,8 +91,14 @@ module.exports = {
   Release,
   Log,
   Otp,
+  Webhook,
+  WebhookDelivery,
   authEmailQueue,
   emailQueue,
+  webhookQueue,
+  enqueueWebhookDelivery,
+  initWebhookWorker,
+  generateSignature,
   sendOtp,
   sendReleaseEmail,
   sendAuthOtpEmail,
@@ -99,6 +115,8 @@ module.exports = {
   sanitize,
   updateExternalConfigSchema,
   updateAuthProvidersSchema,
+  createWebhookSchema,
+  updateWebhookSchema,
   garbageCollect,
   storageGarbageCollect,
   generateApiKey,

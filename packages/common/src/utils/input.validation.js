@@ -397,3 +397,64 @@ module.exports.userSignupSchema = z.object({
     .min(6, { message: "Password must be at least 6 characters." })
     .max(100, { message: "Password is too long." }),
 });
+
+// Webhook event config schema for per-collection events
+const webhookEventConfigSchema = z.object({
+  insert: z.boolean().optional(),
+  update: z.boolean().optional(),
+  delete: z.boolean().optional(),
+});
+
+// URL validation: HTTPS required (or http://localhost for dev)
+const webhookUrlSchema = z
+  .string()
+  .min(1, "Webhook URL is required")
+  .max(2048, "URL is too long")
+  .url("Invalid URL format")
+  .refine(
+    (url) => {
+      try {
+        const parsed = new URL(url);
+        return (
+          parsed.protocol === "https:" ||
+          (parsed.protocol === "http:" && parsed.hostname === "localhost")
+        );
+      } catch {
+        return false;
+      }
+    },
+    "Webhook URL must use HTTPS (or http://localhost for local development)"
+  );
+
+module.exports.createWebhookSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Webhook name is required")
+    .max(100, "Webhook name is too long"),
+  url: webhookUrlSchema,
+  secret: z
+    .string()
+    .min(16, "Secret must be at least 16 characters")
+    .max(256, "Secret is too long"),
+  events: z.record(z.string(), webhookEventConfigSchema).optional(),
+  enabled: z.boolean().optional(),
+});
+
+module.exports.updateWebhookSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Webhook name is required")
+    .max(100, "Webhook name is too long")
+    .optional(),
+  url: webhookUrlSchema.optional(),
+  secret: z
+    .string()
+    .min(16, "Secret must be at least 16 characters")
+    .max(256, "Secret is too long")
+    .optional(),
+  events: z.record(z.string(), webhookEventConfigSchema).optional(),
+  enabled: z.boolean().optional(),
+}).refine(
+  (data) => Object.keys(data).length > 0,
+  { message: "At least one field must be provided for update." }
+);

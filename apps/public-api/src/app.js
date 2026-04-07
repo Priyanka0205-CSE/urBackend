@@ -21,6 +21,12 @@ const { capture } = require('@kiroo/sdk');
 // Initialize Queue Workers
 const {emailQueue} = require('@urbackend/common');
 const {authEmailQueue} = require('@urbackend/common');
+const {initWebhookWorker} = require('@urbackend/common');
+
+// Initialize webhook worker
+if (process.env.NODE_ENV !== 'test') {
+    initWebhookWorker();
+}
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -38,7 +44,7 @@ app.use(capture({
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_KEY,
   bucket: process.env.SUPABASE_BUCKET,
-  sampleRate: 0.2
+  sampleRate: 0
 }));
 
 

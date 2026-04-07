@@ -80,7 +80,7 @@ app.use(capture({
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_KEY,
   bucket: process.env.SUPABASE_BUCKET,
-  sampleRate: 0.1
+  sampleRate: 0
 }));
 
 
@@ -88,9 +88,11 @@ app.use(capture({
 const authRoute = require('./routes/auth');
 const projectRoute = require('./routes/projects');
 const releaseRoute = require('./routes/releases');
+const webhookRoute = require('./routes/webhooks');
 
 app.use('/api/auth', authRoute); 
 app.use('/api/projects', dashboardLimiter, projectRoute);
+app.use('/api/projects', dashboardLimiter, webhookRoute);
 app.use('/api/releases', releaseRoute);
 
 
