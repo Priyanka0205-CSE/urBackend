@@ -30,10 +30,14 @@ const reserveMonthlyMailSlot = async (projectId, limit) => {
   const ttlSeconds = getEndOfMonthTtlSeconds(now);
   const key = getMailCountKey(projectId, monthKey);
 
-  const count = await redis.incr(key);
-  if (count === 1) {
-    await redis.expire(key, ttlSeconds);
-  }
+  const luaScript = `
+    local current = redis.call("INCR", KEYS[1])
+    if current == 1 then
+      redis.call("EXPIRE", KEYS[1], ARGV[1])
+    end
+    return current
+  `;
+  const count = await redis.eval(luaScript, 1, key, ttlSeconds);
 
   if (count > limit) {
     await redis.decr(key);
@@ -51,7 +55,9 @@ module.exports.sendMail = async (req, res) => {
   try {
     if (req.keyRole !== "secret") {
       return res.status(403).json({
-        error: "Forbidden. This action requires a Secret Key (sk_live_...).",
+        success: false,
+        data: {},
+        message: "Forbidden. This action requires a Secret Key (sk_live_...).",
       });
     }
 
@@ -59,12 +65,12 @@ module.exports.sendMail = async (req, res) => {
     const projectId = req.project?._id;
 
     if (!projectId) {
-      return res.status(401).json({ error: "Project context missing." });
+      return res.status(401).json({ success: false, data: {}, message: "Project context missing." });
     }
 
     const project = await loadProjectMailConfig(projectId);
     if (!project) {
-      return res.status(404).json({ error: "Project not found." });
+      return res.status(404).json({ success: false, data: {}, message: "Project not found." });
     }
 
     const encryptedByokKey =
@@ -79,7 +85,7 @@ module.exports.sendMail = async (req, res) => {
       : process.env.RESEND_API_KEY_2 || process.env.RESEND_API_KEY;
 
     if (!clientKey) {
-      return res.status(500).json({ error: "Resend API key is not configured." });
+      return res.status(500).json({ success: false, data: {}, message: "Resend API key is not configured." });
     }
 
     const limit = getMonthlyMailLimit(req.project);
@@ -125,12 +131,16 @@ module.exports.sendMail = async (req, res) => {
 
     if (err instanceof z.ZodError) {
       return res.status(400).json({
-        error: err.issues?.[0]?.message || "Invalid mail payload.",
+        success: false,
+        data: {},
+        message: err.issues?.[0]?.message || "Invalid mail payload.",
       });
     }
 
     return res.status(err.statusCode || 500).json({
-      error: err.message || "Failed to send mail.",
+      success: false,
+      data: {},
+      message: err.message || "Failed to send mail.",
       ...(typeof err.limit === "number" ? { limit: err.limit } : {}),
     });
   }
