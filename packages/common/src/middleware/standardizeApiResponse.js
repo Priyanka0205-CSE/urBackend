@@ -23,8 +23,10 @@ const pickMessage = (value) => {
 
     if (value && typeof value === 'object') {
         if (typeof value.message === 'string' && value.message.trim()) return value.message;
+        if (typeof value.error === 'string' && value.error.trim()) return value.error;
         if (Array.isArray(value.errors) && value.errors[0]?.message) return value.errors[0].message;
         if (Array.isArray(value.issues) && value.issues[0]?.message) return value.issues[0].message;
+        if (Array.isArray(value.error) && value.error[0]?.message) return value.error[0].message;
     }
 
     return null;
@@ -40,9 +42,15 @@ const toErrorMessage = (raw) => {
     }
 
     const serialized = safeStringify(raw);
-    return serialized === '{}' || serialized === '[]' || serialized === 'null' || serialized === '""'
-        ? 'Unknown error'
-        : serialized;
+    // Only mask as 'Unknown error' if the serialized body is trivial (empty)
+    const isTrivial = serialized === '{}' || serialized === '[]' || serialized === 'null' || serialized === '""';
+    
+    if (isTrivial) {
+        return 'Unknown error';
+    }
+
+    // Otherwise, return the stringified body so we don't mask potentially useful data
+    return serialized;
 };
 
 module.exports = (req, res, next) => {
