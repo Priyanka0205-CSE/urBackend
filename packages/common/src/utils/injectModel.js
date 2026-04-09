@@ -10,7 +10,8 @@ const typeMapping = {
 };
 
 // Recursive field definition builder
-function buildFieldDef(field, projectId, isExternal) {
+// Recursive field definition builder
+function buildFieldDef(field, projectId, isExternal, isUsersCollection = false) {
   // Object type — nested sub-schema
   if (field.type === "Object" && field.fields && field.fields.length > 0) {
     const subSchema = {};
@@ -18,7 +19,7 @@ function buildFieldDef(field, projectId, isExternal) {
       const normalizedKey = normalizeKey(f.key);
       if (!normalizedKey) return;
 
-      subSchema[normalizedKey] = buildFieldDef(f, projectId, isExternal);
+      subSchema[normalizedKey] = buildFieldDef(f, projectId, isExternal, isUsersCollection);
     });
     return { type: subSchema, required: !!field.required };
   }
@@ -42,7 +43,7 @@ function buildFieldDef(field, projectId, isExternal) {
         const normalizedKey = normalizeKey(f.key);
         if (!normalizedKey) return;
 
-        subSchema[normalizedKey] = buildFieldDef(f, projectId, isExternal);
+        subSchema[normalizedKey] = buildFieldDef(f, projectId, isExternal, isUsersCollection);
       });
       return { type: [subSchema], required: !!field.required };
     }
@@ -71,10 +72,17 @@ function buildFieldDef(field, projectId, isExternal) {
   }
 
   // Primitive types
-  return {
+  const def = {
     type: typeMapping[field.type],
     required: !!field.required,
   };
+
+  // HARDEN: Exclude password by default for project users
+  if (isUsersCollection && normalizeKey(field.key) === "password") {
+    def.select = false;
+  }
+
+  return def;
 }
 function normalizeKey(key) {
   return String(key || "")
@@ -82,14 +90,14 @@ function normalizeKey(key) {
     .trim();
 }
 
-function buildMongooseSchema(fieldsArray = [], projectId, isExternal) {
+function buildMongooseSchema(fieldsArray = [], projectId, isExternal, isUsersCollection = false) {
   const schemaDef = {};
 
   fieldsArray.forEach((field) => {
     const normalizedKey = normalizeKey(field.key);
     if (!normalizedKey) return;
 
-    schemaDef[normalizedKey] = buildFieldDef(field, projectId, isExternal);
+    schemaDef[normalizedKey] = buildFieldDef(field, projectId, isExternal, isUsersCollection);
   });
 
   return new mongoose.Schema(schemaDef, {
@@ -126,7 +134,8 @@ function getCompiledModel(connection, collectionData, projectId, isExternal) {
   }
 
   // Build schema + compile
-  const schema = buildMongooseSchema(collectionData.model, projectId, isExternal);
+  const isUsersCollection = collectionData.name === "users";
+  const schema = buildMongooseSchema(collectionData.model, projectId, isExternal, isUsersCollection);
   const model = connection.model(collectionName, schema);
 
   // Cache it
@@ -134,6 +143,7 @@ function getCompiledModel(connection, collectionData, projectId, isExternal) {
 
   return model;
 }
+
 
 // Clear cached model (needed when schema changes)
 function clearCompiledModel(connection, collectionName) {

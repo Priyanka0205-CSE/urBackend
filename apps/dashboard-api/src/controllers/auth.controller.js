@@ -132,7 +132,7 @@ module.exports.login = async (req, res) => {
     try {
         const { email, password } = loginSchema.parse(req.body);
 
-        const dev = await Developer.findOne({ email: email.toLowerCase().trim() });
+        const dev = await Developer.findOne({ email: email.toLowerCase().trim() }).select('+password');
         if (!dev) return res.status(400).json({ error: "User not found" });
 
         const validPass = await bcrypt.compare(password, dev.password);
@@ -156,7 +156,7 @@ module.exports.changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
 
-        const dev = await Developer.findById(req.user._id);
+        const dev = await Developer.findById(req.user._id).select('+password');
 
         const validPass = await bcrypt.compare(currentPassword, dev.password);
         if (!validPass) return res.status(400).json({ error: "Incorrect current password" });
@@ -180,7 +180,7 @@ module.exports.deleteAccount = async (req, res) => {
     try {
         const { password } = deleteAccountSchema.parse(req.body);
 
-        const dev = await Developer.findById(req.user._id);
+        const dev = await Developer.findById(req.user._id).select('+password');
 
         const validPass = await bcrypt.compare(password, dev.password);
         if (!validPass) return res.status(400).json({ error: "Incorrect password. Cannot delete account." });
@@ -246,7 +246,7 @@ module.exports.verifyOtp = async (req, res) => {
     try {
         const { email, otp } = verifyOtpSchema.parse(req.body);
 
-        const existingUser = await Developer.findOne({ email });
+        const existingUser = await Developer.findOne({ email }).select('+password');
         if (!existingUser) return res.status(400).json({ error: "User not found" });
 
         const otpDoc = await validateOtp(existingUser._id, otp);
@@ -290,7 +290,7 @@ module.exports.resetPassword = async (req, res) => {
     try {
         const { email, otp, newPassword } = resetPasswordSchema.parse(req.body);
 
-        const dev = await Developer.findOne({ email });
+        const dev = await Developer.findOne({ email }).select('+password');
         if (!dev) return res.status(400).json({ error: "User not found" });
 
         const otpDoc = await validateOtp(dev._id, otp);
@@ -366,7 +366,7 @@ module.exports.refreshToken = async (req, res) => {
         }
 
         const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
-        const user = await Developer.findById(decoded._id);
+        const user = await Developer.findById(decoded._id).select('+refreshToken');
 
         if (!user || user.refreshToken !== refreshToken) {
             return res.status(403).json({ error: "Invalid refresh token" });

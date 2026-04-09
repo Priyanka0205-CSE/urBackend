@@ -1050,7 +1050,7 @@ module.exports.login = async (req, res) => {
         const connection = await getConnection(project._id);
         const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
 
-        const user = await Model.findOne({ email: normalizedEmail });
+        const user = await Model.findOne({ email: normalizedEmail }).select('+password');
 
         if (!user) return res.status(400).json({ error: "Invalid email or password" });
 

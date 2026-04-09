@@ -22,9 +22,11 @@ jest.mock('mongoose', () => ({
 jest.mock('@urbackend/common', () => {
     const z = require('zod');
     const mockModel = {
-        findOne: jest.fn(),
+        findOne: jest.fn().mockReturnThis(),
         create: jest.fn(),
         updateOne: jest.fn(),
+        select: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
     };
 
     const projectFindByIdChain = {
@@ -125,7 +127,7 @@ describe('public userAuth refresh flow', () => {
     });
 
     test('login issues access token and sets refresh cookie', async () => {
-        mockModel.findOne.mockResolvedValueOnce({
+        mockModel.select.mockResolvedValueOnce({
             _id: 'user_1',
             password: 'hashed_pw',
             email: 'a@b.com',

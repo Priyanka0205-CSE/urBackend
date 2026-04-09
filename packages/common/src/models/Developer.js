@@ -8,7 +8,8 @@ const developerSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: true
+        required: true,
+        select: false
     },
     isVerified: {
         type: Boolean,
@@ -20,7 +21,8 @@ const developerSchema = new mongoose.Schema({
     },
     refreshToken: {
         type: String,
-        default: null
+        default: null,
+        select: false
     }
 }, { timestamps: true });
 
