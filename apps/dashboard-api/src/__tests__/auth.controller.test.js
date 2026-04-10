@@ -35,6 +35,16 @@ jest.mock('@urbackend/common', () => {
     Developer.findById = jest.fn();
     Developer.findByIdAndDelete = jest.fn();
 
+    // Helper to mock a Mongoose query that is both chainable (select) and thenable
+    Developer.__mockQuery = (value) => {
+        const query = {
+            select: jest.fn().mockReturnThis(),
+            then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
+            catch: (reject) => Promise.resolve(value).catch(reject),
+        };
+        return query;
+    };
+
     const Otp = jest.fn().mockImplementation((data) => ({
         ...data,
         save: jest.fn().mockResolvedValue(undefined),
@@ -177,7 +187,7 @@ describe('auth.controller', () => {
 
         test('returns 200 with cookie tokens on valid credentials', async () => {
             const user = mockUser();
-            Developer.findOne.mockResolvedValue(user);
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(user));
             bcrypt.compare.mockResolvedValue(true);
             jwt.sign.mockReturnValue('signed_token');
 
@@ -196,7 +206,7 @@ describe('auth.controller', () => {
         });
 
         test('returns 400 when user is not found', async () => {
-            Developer.findOne.mockResolvedValue(null);
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(null));
 
             const req = makeReq({ email: 'noone@example.com', password: 'pass' });
             const res = makeRes();
@@ -208,7 +218,7 @@ describe('auth.controller', () => {
         });
 
         test('returns 400 on invalid password', async () => {
-            Developer.findOne.mockResolvedValue(mockUser());
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(mockUser()));
             bcrypt.compare.mockResolvedValue(false);
 
             const req = makeReq({ email: 'test@example.com', password: 'wrongpass' });
@@ -245,7 +255,7 @@ describe('auth.controller', () => {
         test('returns 200 with new tokens when refresh token is valid', async () => {
             const user = mockUser();
             jwt.verify.mockReturnValue({ _id: 'dev_id_1' });
-            Developer.findById.mockResolvedValue(user);
+            Developer.findById.mockReturnValue(Developer.__mockQuery(user));
             jwt.sign.mockReturnValue('new_token');
 
             const req = makeReq({}, null, { refreshToken: 'valid_refresh_token' });
@@ -280,7 +290,7 @@ describe('auth.controller', () => {
 
         test('returns 403 when stored refresh token does not match', async () => {
             jwt.verify.mockReturnValue({ _id: 'dev_id_1' });
-            Developer.findById.mockResolvedValue({ ...mockUser(), refreshToken: 'different_token' });
+            Developer.findById.mockReturnValue(Developer.__mockQuery({ ...mockUser(), refreshToken: 'different_token' }));
 
             const req = makeReq({}, null, { refreshToken: 'valid_refresh_token' });
             const res = makeRes();
@@ -370,7 +380,7 @@ describe('auth.controller', () => {
                 password: 'old_hashed',
                 save: jest.fn().mockResolvedValue(undefined),
             };
-            Developer.findById.mockResolvedValue(mockUser);
+            Developer.findById.mockReturnValue(Developer.__mockQuery(mockUser));
             bcrypt.compare.mockResolvedValue(true);
             bcrypt.genSalt.mockResolvedValue('salt');
             bcrypt.hash.mockResolvedValue('new_hashed');
@@ -391,10 +401,10 @@ describe('auth.controller', () => {
         });
 
         test('returns 400 when current password is incorrect', async () => {
-            Developer.findById.mockResolvedValue({
+            Developer.findById.mockReturnValue(Developer.__mockQuery({
                 password: 'old_hashed',
                 save: jest.fn(),
-            });
+            }));
             bcrypt.compare.mockResolvedValue(false);
 
             const req = makeReq(
@@ -413,7 +423,7 @@ describe('auth.controller', () => {
     // -----------------------------------------------------------------------
     describe('sendOtp', () => {
         test('returns 400 when user is not found', async () => {
-            Developer.findOne.mockResolvedValue(null);
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(null));
 
             const req = makeReq({ email: 'noone@example.com' });
             const res = makeRes();
@@ -421,11 +431,11 @@ describe('auth.controller', () => {
             await authController.sendOtp(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: 'User not found' });
+            expect(res.json).toHaveBeenCalledWith({ error: 'User not found. Ensure you are using the correct email.' });
         });
 
         test('returns 400 when user is already verified', async () => {
-            Developer.findOne.mockResolvedValue({ _id: 'u1', isVerified: true });
+            Developer.findOne.mockReturnValue(Developer.__mockQuery({ _id: 'u1', isVerified: true }));
 
             const req = makeReq({ email: 'verified@example.com' });
             const res = makeRes();
@@ -433,12 +443,12 @@ describe('auth.controller', () => {
             await authController.sendOtp(req, res);
 
             expect(res.status).toHaveBeenCalledWith(400);
-            expect(res.json).toHaveBeenCalledWith({ error: 'User already verified' });
+            expect(res.json).toHaveBeenCalledWith({ error: 'Account is already verified. Please login.' });
         });
 
         test('sends OTP and returns success for unverified user', async () => {
             const user = { _id: 'u1', isVerified: false };
-            Developer.findOne.mockResolvedValue(user);
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(user));
             Otp.deleteOne.mockResolvedValue(undefined);
             bcrypt.genSalt.mockResolvedValue('salt');
             bcrypt.hash.mockResolvedValue('hashed_otp');
@@ -459,7 +469,7 @@ describe('auth.controller', () => {
     // -----------------------------------------------------------------------
     describe('forgotPassword', () => {
         test('returns the same message regardless of whether user exists (prevents email enumeration)', async () => {
-            Developer.findOne.mockResolvedValue(null);
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(null));
 
             const req = makeReq({ email: 'ghost@example.com' });
             const res = makeRes();
@@ -490,7 +500,7 @@ describe('auth.controller', () => {
                 save: jest.fn().mockResolvedValue(undefined),
             };
 
-            Developer.findOne.mockResolvedValue(mockUser);
+            Developer.findOne.mockReturnValue(Developer.__mockQuery(mockUser));
             Otp.findOne.mockResolvedValue(mockOtpDoc);
             bcrypt.compare.mockResolvedValue(true);
             bcrypt.genSalt.mockResolvedValue('salt');
