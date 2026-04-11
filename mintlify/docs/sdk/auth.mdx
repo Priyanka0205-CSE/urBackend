@@ -39,10 +39,11 @@ login(payload: LoginPayload): Promise<AuthResponse>
 
 ```typescript
 interface AuthResponse {
-  accessToken: string;
-  token: string; // Alias for accessToken (deprecated)
-  user: AuthUser;
-  expiresIn: string;
+  accessToken?: string;
+  token?: string; // Alias for accessToken (deprecated)
+  user?: AuthUser;
+  expiresIn?: string;
+  userId?: string;
 }
 ```
 
