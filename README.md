@@ -1,6 +1,6 @@
 <h1 align="center">
   urBackend 🚀
-<h1>
+</h1>
 
 <p align="center">
   <img src="banner.png" alt="urBackend Banner" width="100%" />
