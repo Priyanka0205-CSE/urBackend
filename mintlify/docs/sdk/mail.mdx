@@ -31,8 +31,8 @@ send(payload: SendMailPayload): Promise<SendMailResponse>
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | `string` | The message ID from the provider. |
-| `provider` | `string` | The provider used (`"byok"` or `"default"`). |
+| `id` | `string \| null` | The message ID from the provider (`null` if unavailable). |
+| `provider` | `'byok' \| 'default'` | The provider used. |
 | `monthlyUsage` | `number` | Total emails sent this month. |
 | `monthlyLimit` | `number` | Your project's monthly quota. |
 
