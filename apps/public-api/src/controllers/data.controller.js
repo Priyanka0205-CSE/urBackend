@@ -125,12 +125,12 @@ module.exports.getAllData = async (req, res) => {
     // Handle count=true query parameter
 if (req.query.count === 'true') {
   const countEngine = new QueryEngine(Model.find(), req.query);
-  let countQuery = countEngine.count().query;
-  if (Object.keys(baseFilter).length > 0) {
-    countQuery = Model.countDocuments({ ...countQuery.getFilter?.() ?? {}, ...baseFilter });
-  }
-  const count = await countQuery;
-  return res.json({ count });
+  const mongoFilter = countEngine.filter().query.getFilter();
+  const mergedFilter = Object.keys(baseFilter).length > 0
+    ? { ...mongoFilter, ...baseFilter }
+    : mongoFilter;
+  const count = await Model.countDocuments(mergedFilter);
+  return res.status(200).json({ success: true, data: { count }, message: "Count fetched successfully." });
 }
     const features = new QueryEngine(Model.find(), req.query)
       .filter();
