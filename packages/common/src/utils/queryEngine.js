@@ -71,11 +71,6 @@ class QueryEngine {
         });
         return this;
     }
-
-    async count() {
-        // Clone the query to avoid affecting the original query's skip/limit
-        return await this.query.model.countDocuments(this.query.getQuery());
-    }
 }
 
 module.exports = QueryEngine;
