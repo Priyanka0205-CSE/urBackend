@@ -5,11 +5,6 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      '@urbackend/sdk': path.resolve(__dirname, 'node_modules/@urbackend/sdk/dist/index.mjs')
-    }
-  },
   optimizeDeps: {
     include: ['@urbackend/sdk']
   }
