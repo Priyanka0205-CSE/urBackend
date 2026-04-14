@@ -131,13 +131,13 @@ module.exports.getAllData = async (req, res) => {
 
     features
       .sort()
-      .populate()
-      .paginate();
+      .populate();
 
-    const [data, total] = await Promise.all([
-      features.query.lean(),
-      features.count()
-    ]);
+    const total = await features.count();
+
+    features.paginate();
+
+    const data = await features.query.lean();
 
     if (isDebug) console.log(`[DEBUG] getall took ${(performance.now() - start).toFixed(2)}ms`);
     
