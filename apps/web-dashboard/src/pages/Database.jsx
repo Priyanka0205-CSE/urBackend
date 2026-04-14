@@ -180,7 +180,7 @@ export default function Database() {
               onOpenSidebar={() => setIsSidebarOpen(true)}
             />
 
-            <div className="db-content" style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            <div className="db-content" style={{ flex: 1, overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column' }}>
               {showFilterMenu && (
                 <DatabaseFilter 
                   queryParams={queryParams}
@@ -190,22 +190,24 @@ export default function Database() {
                 />
               )}
 
-              {loadingData ? (
-                <div style={{ padding: '2rem', textAlign: 'center' }} className="spinner"></div>
-              ) : data.length === 0 ? (
-                <div className="empty-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
-                  <FileText size={48} />
-                  <p style={{ marginTop: '1rem' }}>No records found</p>
-                </div>
-              ) : viewMode === "list" ? (
-                <RecordList data={data} activeCollection={activeCollection} onView={setSelectedRecord} />
-              ) : viewMode === "table" ? (
-                <CollectionTable data={data} activeCollection={activeCollection} onDelete={(id) => { setSelectedId(id); setShowModal(true); }} onView={setSelectedRecord} onEdit={(rec) => { if (activeCollection?.name === 'users') return; setEditingRecord(rec); setIsAddModalOpen(true); }} />
-              ) : (
-                <div style={{ height: '100%', overflow: 'auto', padding: '1.5rem', background: '#050505', color: 'var(--color-primary)', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                  <pre>{JSON.stringify(data, null, 2)}</pre>
-                </div>
-              )}
+              <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+                {loadingData ? (
+                  <div style={{ padding: '2rem', textAlign: 'center' }} className="spinner"></div>
+                ) : data.length === 0 ? (
+                  <div className="empty-state" style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
+                    <FileText size={48} />
+                    <p style={{ marginTop: '1rem' }}>No records found</p>
+                  </div>
+                ) : viewMode === "list" ? (
+                  <RecordList data={data} activeCollection={activeCollection} onView={setSelectedRecord} />
+                ) : viewMode === "table" ? (
+                  <CollectionTable data={data} activeCollection={activeCollection} onDelete={(id) => { setSelectedId(id); setShowModal(true); }} onView={setSelectedRecord} onEdit={(rec) => { if (activeCollection?.name === 'users') return; setEditingRecord(rec); setIsAddModalOpen(true); }} />
+                ) : (
+                  <div style={{ height: '100%', overflow: 'auto', padding: '1.5rem', background: '#050505', color: 'var(--color-primary)', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                    <pre>{JSON.stringify(data, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
 
               <Pagination 
                 total={totalRecords}
