@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -7,7 +7,7 @@ import { API_URL } from '../config';
 import ConfirmationModal from './ConfirmationModal';
 
 export default function Settings() {
-    const { logout } = useAuth();
+    const { logout, user, isLoading } = useAuth();
 
     // Password State
     const [passData, setPassData] = useState({ currentPassword: '', newPassword: '' });
@@ -17,7 +17,7 @@ export default function Settings() {
     const [deletePass, setDeletePass] = useState('');
     const [loadingDelete, setLoadingDelete] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [pageLoading, setPageLoading] = useState(true);
+    const pageLoading = isLoading;
 
     // Handle Password Change
     const handlePasswordChange = async (e) => {
@@ -59,11 +59,6 @@ export default function Settings() {
         setShowDeleteModal(true);
     };
 
-useEffect(() => {
-    const timer = setTimeout(() => setPageLoading(false), 500);
-    return () => clearTimeout(timer);
-}, []);
-
 const SettingsSkeleton = () => (
     <div style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div className="skeleton" style={{ width: '140px', height: '28px' }} />
@@ -91,16 +86,16 @@ if (pageLoading) return <SettingsSkeleton />;
                 <div style={{
                     padding: '6px 14px',
                     borderRadius: '20px',
-                    backgroundColor: useAuth().user?.isVerified ? 'rgba(62, 207, 142, 0.1)' : 'rgba(255, 193, 7, 0.1)',
-                    border: `1px solid ${useAuth().user?.isVerified ? 'rgba(62, 207, 142, 0.2)' : 'rgba(255, 193, 7, 0.2)'}`,
-                    color: useAuth().user?.isVerified ? '#3ECF8E' : '#FFC107',
+                    backgroundColor: user?.isVerified ? 'rgba(62, 207, 142, 0.1)' : 'rgba(255, 193, 7, 0.1)',
+                    border: `1px solid ${user?.isVerified ? 'rgba(62, 207, 142, 0.2)' : 'rgba(255, 193, 7, 0.2)'}`,
+                    color: user?.isVerified ? '#3ECF8E' : '#FFC107',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
                     fontWeight: 600,
                     fontSize: '0.9rem'
                 }}>
-                    {useAuth().user?.isVerified ? (
+                    {user?.isVerified ? (
                         <>
                             <CheckCircle size={16} /> Verified Account
                         </>
