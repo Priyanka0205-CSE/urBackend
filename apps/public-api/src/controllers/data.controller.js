@@ -122,6 +122,16 @@ module.exports.getAllData = async (req, res) => {
     );
 
     const baseFilter = req.rlsFilter && typeof req.rlsFilter === 'object' ? req.rlsFilter : {};
+    // Handle count=true query parameter
+if (req.query.count === 'true') {
+  const countEngine = new QueryEngine(Model.find(), req.query);
+const mongoFilter = countEngine._buildMongoQuery(true);
+const mergedFilter = Object.keys(baseFilter).length > 0
+  ? { $and: [mongoFilter, baseFilter] }
+  : mongoFilter;
+  const count = await Model.countDocuments(mergedFilter);
+  return res.status(200).json({ success: true, data: { count }, message: "Count fetched successfully." });
+}
     const features = new QueryEngine(Model.find(), req.query)
       .filter();
 
