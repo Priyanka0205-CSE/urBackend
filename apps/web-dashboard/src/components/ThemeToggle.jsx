@@ -21,6 +21,7 @@ const getInitialTheme = () => {
 const ThemeToggle = () => {
   const [isDark, setIsDark] = useState(getInitialTheme);
 
+  // Apply class whenever isDark changes
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.remove('light-mode');
@@ -29,8 +30,22 @@ const ThemeToggle = () => {
     }
   }, [isDark]);
 
+  // Listen to system preference changes – safely
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+    // Guard for environments where matchMedia is not available
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      console.warn('window.matchMedia not available, skipping system theme sync');
+      return;
+    }
+
+    let mediaQuery;
+    try {
+      mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+    } catch (err) {
+      console.warn('matchMedia unavailable, skipping system theme sync', err);
+      return;
+    }
+
     const handleChange = (e) => {
       try {
         if (!localStorage.getItem('urbackend-theme')) {
@@ -40,8 +55,15 @@ const ThemeToggle = () => {
         console.warn('Could not read localStorage for theme sync', err);
       }
     };
+
     mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    return () => {
+      try {
+        mediaQuery.removeEventListener('change', handleChange);
+      } catch (err) {
+        console.warn('Failed to remove matchMedia listener', err);
+      }
+    };
   }, []);
 
   const toggleTheme = () => {
