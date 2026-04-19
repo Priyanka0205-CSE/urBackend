@@ -26,10 +26,17 @@
         }
 
         var normalizedValue = (storedValue || '').toLowerCase();
-        var shouldUseLightMode =
-          normalizedValue === 'light' ||
-          normalizedValue === 'light-mode' ||
-          normalizedValue === 'true';
+        var shouldUseLightMode;
+        if (normalizedValue) {
+          shouldUseLightMode =
+            normalizedValue === 'light' ||
+            normalizedValue === 'light-mode' ||
+            normalizedValue === 'true';
+        } else {
+          shouldUseLightMode =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: light)').matches;
+        }
 
         document.documentElement.classList.toggle('light-mode', shouldUseLightMode);
       })();
