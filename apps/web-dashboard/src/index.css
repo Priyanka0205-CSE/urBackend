@@ -27,6 +27,48 @@
   --color-success: #3ECF8E;
   --color-overlay: rgba(0, 0, 0, 0.8);
 
+  /* Additional variables for consistent theming */
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-surface-hover-strong: rgba(255, 255, 255, 0.1);
+  --color-skeleton-from: #1c1c1c;
+  --color-skeleton-to: #2a2a2a;
+  --color-scrollbar-thumb: #333333;
+  --color-scrollbar-thumb-hover: #444444;
+  --color-glass-card-bg: rgba(10, 10, 10, 0.7);
+  --color-glass-card-border: rgba(255, 255, 255, 0.05);
+  --color-select-text: #EDEDED;
+  --color-select-bg: #0A0A0A;
+
+  /* Auth-related variables for dark mode */
+  --color-auth-shell-bg: #000000;
+  --color-auth-ambient-secondary: rgba(62, 207, 142, 0.05);
+  --color-auth-brand-mark-bg: #3ECF8E;
+  --color-auth-brand-mark-text: #ffffff;
+  --color-auth-brand-text: #EDEDED;
+  --color-auth-mode-bg: rgba(255, 255, 255, 0.05);
+  --color-auth-mode-text: #888888;
+  --color-auth-heading: #EDEDED;
+  --color-text-soft: #888888;
+  --color-auth-label: #EDEDED;
+  --color-text-faint: #888888;
+  --color-auth-icon: #888888;
+  --color-auth-input-border: #1E1E1E;
+  --color-auth-input-bg: #0A0A0A;
+  --color-text-placeholder: #888888;
+  --color-auth-input-toggle-text: #888888;
+  --color-auth-input-toggle-hover-text: #EDEDED;
+  --color-auth-link: #3ECF8E;
+  --color-auth-link-hover: #34B27B;
+  --color-auth-divider-text: #888888;
+  --color-divider: #1E1E1E;
+  --color-auth-password-text: #888888;
+  --color-auth-password-passed: #3ECF8E;
+  --color-auth-password-dot: #333333;
+  --color-auth-password-dot-shadow: rgba(62, 207, 142, 0.1);
+  --color-border-subtle: #0F0F0F;
+  --color-auth-footer-text: #888888;
+  --color-auth-footer-note: #888888;
+
   /* Dimensions */
   --sidebar-width: 60px; /* Mini sidebar by default */
   --sidebar-width-expanded: 240px;
@@ -62,6 +104,46 @@
   --glass-bg: rgba(255, 255, 255, 0.6);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-backdrop: blur(10px);
+
+  --color-surface-hover: rgba(0, 0, 0, 0.05);
+  --color-surface-hover-strong: rgba(0, 0, 0, 0.1);
+  --color-skeleton-from: #f0f0f0;
+  --color-skeleton-to: #e0e0e0;
+  --color-scrollbar-thumb: #cccccc;
+  --color-scrollbar-thumb-hover: #aaaaaa;
+  --color-glass-card-bg: rgba(255, 255, 255, 0.8);
+  --color-glass-card-border: rgba(0, 0, 0, 0.1);
+  --color-select-text: #111111;
+  --color-select-bg: #ffffff;
+
+  --color-auth-shell-bg: #ffffff;
+  --color-auth-ambient-secondary: rgba(62, 207, 142, 0.05);
+  --color-auth-brand-mark-bg: #3ECF8E;
+  --color-auth-brand-mark-text: #ffffff;
+  --color-auth-brand-text: #111111;
+  --color-auth-mode-bg: rgba(0, 0, 0, 0.05);
+  --color-auth-mode-text: #666666;
+  --color-auth-heading: #111111;
+  --color-text-soft: #666666;
+  --color-auth-label: #111111;
+  --color-text-faint: #888888;
+  --color-auth-icon: #666666;
+  --color-auth-input-border: #e5e7eb;
+  --color-auth-input-bg: #ffffff;
+  --color-text-placeholder: #999999;
+  --color-auth-input-toggle-text: #666666;
+  --color-auth-input-toggle-hover-text: #111111;
+  --color-auth-link: #3ECF8E;
+  --color-auth-link-hover: #2fb67a;
+  --color-auth-divider-text: #666666;
+  --color-divider: #e5e7eb;
+  --color-auth-password-text: #666666;
+  --color-auth-password-passed: #16a34a;
+  --color-auth-password-dot: #cccccc;
+  --color-auth-password-dot-shadow: rgba(22, 163, 74, 0.1);
+  --color-border-subtle: #f1f3f5;
+  --color-auth-footer-text: #666666;
+  --color-auth-footer-note: #999999;
 }
 
 * {
