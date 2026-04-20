@@ -13,7 +13,7 @@ class QueryEngine {
         this.hasRegexFilter = false;
     }
 
-    static EXCLUDED_FIELDS = ['page', 'sort', 'limit', 'fields', 'populate', 'expand', 'count'];
+    static EXCLUDED_FIELDS = ['page', 'sort', 'limit', 'fields', 'populate', 'expand', 'count', 'meta'];
     static MAX_REGEX_PATTERN_LENGTH = 128;
     static REGEX_MAX_TIME_MS = 2000;
 
@@ -117,6 +117,11 @@ class QueryEngine {
         } else {
             this.query = this.query.select('-__v');
         }
+
+        if (this.queryString.meta === 'false') {
+            this.query = this.query.select('-schemaVersion -createdAt -updatedAt -__v');
+        }
+
         return this;
     }
 

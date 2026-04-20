@@ -209,6 +209,17 @@ module.exports.getSingleDoc = async (req, res) => {
     const baseFilter = req.rlsFilter && typeof req.rlsFilter === 'object' ? req.rlsFilter : {};
     let query = Model.findOne({ $and: [{ _id: id }, baseFilter] });
 
+    // Handle fields and meta exclusion
+    if (req.query.fields) {
+      query = query.select(req.query.fields.split(',').join(' '));
+    } else {
+      query = query.select('-__v');
+    }
+
+    if (req.query.meta === 'false') {
+      query = query.select('-schemaVersion -createdAt -updatedAt -__v');
+    }
+
     // Handle population for single doc
     const rawPopulateParam = req.query.populate || req.query.expand;
     if (rawPopulateParam) {

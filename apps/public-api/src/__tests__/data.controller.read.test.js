@@ -45,6 +45,7 @@ jest.mock('@urbackend/common', () => ({
                     mockPopulate(...pArgs);
                     return chainable;
                 },
+                select: () => chainable,
                 lean: jest.fn().mockResolvedValue({ _id: 'doc_1' }),
             };
             return chainable;
