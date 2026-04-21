@@ -1,13 +1,15 @@
 {
   "name": "@urbackend/sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Official TypeScript SDK for urBackend BaaS",
   "type": "module",
   "files": [
     "dist",
     "index.js",
     "index.cjs",
-    "index.d.ts"
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
   ],
   "main": "./index.cjs",
   "module": "./index.js",
