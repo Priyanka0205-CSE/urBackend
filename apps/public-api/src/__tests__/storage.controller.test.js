@@ -111,7 +111,7 @@ describe('storage.controller', () => {
 
             expect(Project.updateOne).toHaveBeenCalled();
             expect(res.status).toHaveBeenCalledWith(403);
-            expect(res.json).toHaveBeenCalledWith({ error: 'Internal storage limit exceeded.' });
+            expect(res.json).toHaveBeenCalledWith({ error: 'Storage limit exceeded. Please upgrade your plan or delete some files.' });
         });
 
         test('returns 201 and public URL on successful internal upload', async () => {
