@@ -43,8 +43,6 @@ module.exports.createCheckout = async (req, res, next) => {
                 developer_id: developer._id.toString(),
                 email: developer.email,
             },
-            // After payment, Razorpay redirects here
-            callback_url: `${process.env.FRONTEND_URL}/billing/success`,
         });
 
         res.json({
