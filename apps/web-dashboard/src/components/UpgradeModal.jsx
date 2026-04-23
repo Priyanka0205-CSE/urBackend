@@ -70,7 +70,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                 subscription_id: subscriptionId,
                 name: 'urBackend',
                 description: 'urBackend Pro Subscription',
-                handler: function (response) {
+                handler: function () {
                     toast.success('Payment successful! Upgrading your account...');
                     onClose();
                     navigate('/billing/success');
