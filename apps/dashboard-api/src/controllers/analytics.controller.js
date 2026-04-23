@@ -7,7 +7,6 @@ const mongoose = require("mongoose");
 module.exports.getGlobalStats = async (req, res) => {
   try {
     const user_id = req.user._id;
-    // Bulletproof matching: string or ObjectId
     const userId = new mongoose.Types.ObjectId(user_id);
 
     const [stats, dev] = await Promise.all([
@@ -40,7 +39,6 @@ module.exports.getGlobalStats = async (req, res) => {
       totalCollections: 0
     };
 
-    // Robust request counting
     const projectIds = await Project.find({ owner: user_id }).distinct("_id");
     const totalRequests = await Log.countDocuments({ projectId: { $in: projectIds } });
 
@@ -48,21 +46,29 @@ module.exports.getGlobalStats = async (req, res) => {
     const limits = getPlanLimits({
       plan: effectivePlan,
       legacyLimits: {
-        maxProjects: dev?.maxProjects,
-        maxCollections: dev?.maxCollections
+        maxProjects: dev?.maxProjects ?? null,
+        maxCollections: dev?.maxCollections ?? null
       }
     });
 
     res.json({
-      ...globalStats,
-      totalRequests,
-      limits: {
-        maxProjects: limits.maxProjects,
-        maxCollections: limits.maxCollections
-      }
+      success: true,
+      data: {
+        plan: effectivePlan,
+        planExpiresAt: dev?.planExpiresAt || null,
+        limits,
+        usage: {
+          totalProjects: globalStats.totalProjects,
+          totalCollections: globalStats.totalCollections,
+          totalStorageUsed: globalStats.totalStorageUsed,
+          totalDatabaseUsed: globalStats.totalDatabaseUsed,
+          totalRequests,
+        }
+      },
+      message: ""
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, data: {}, message: err.message });
   }
 };
 

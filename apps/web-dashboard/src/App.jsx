@@ -27,8 +27,13 @@ import ProjectSettings from './pages/ProjectSettings';
 import Webhooks from './pages/Webhooks';
 
 import { LayoutProvider } from './context/LayoutContext';
+import { PlanProvider, usePlan } from './context/PlanContext';
+import UpgradeModal from './components/UpgradeModal';
+import BillingSuccess from './pages/BillingSuccess';
 
-function App() {
+// Inner component so usePlan can be called inside PlanProvider
+function AppContent() {
+  const { isUpgradeModalOpen, closeUpgradeModal } = usePlan();
   return (
     <LayoutProvider>
       <Toaster position="top-center" reverseOrder={false}
@@ -40,6 +45,8 @@ function App() {
           }
         }}
       />
+
+      <UpgradeModal isOpen={isUpgradeModalOpen} onClose={closeUpgradeModal} />
 
       <Routes>
         <Route path="/" element={<LandingPage />} />
@@ -139,10 +146,24 @@ function App() {
           </ProtectedRoute>
         } />
 
+        <Route path="/billing/success" element={
+          <ProtectedRoute>
+            <BillingSuccess />
+          </ProtectedRoute>
+        } />
+
         <Route path="*" element={<NotFound />} />
 
       </Routes>
     </LayoutProvider>
+  );
+}
+
+function App() {
+  return (
+    <PlanProvider>
+      <AppContent />
+    </PlanProvider>
   );
 }
 

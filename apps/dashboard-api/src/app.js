@@ -91,6 +91,7 @@ const releaseRoute = require('./routes/releases');
 const webhookRoute = require('./routes/webhooks');
 const analyticsRoute = require('./routes/analytics');
 const waitlistRoute = require('./routes/waitlist');
+const billingRoute = require('./routes/billing');
 
 app.use('/api/auth', authRoute); 
 app.use('/api/projects', dashboardLimiter, projectRoute);
@@ -98,6 +99,7 @@ app.use('/api/projects', dashboardLimiter, webhookRoute);
 app.use('/api/releases', releaseRoute);
 app.use('/api/analytics', dashboardLimiter, analyticsRoute);
 app.use('/api/waitlist', waitlistRoute);
+app.use('/api/billing', billingRoute);
 
 
 

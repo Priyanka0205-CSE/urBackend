@@ -33,14 +33,17 @@ api.interceptors.request.use(async (config) => {
     return config;
 }, (error) => Promise.reject(error));
 
+// Upgrade-triggering keywords from backend error messages
+const UPGRADE_KEYWORDS = ['upgrade', 'limit reached', 'pro feature', 'pro plan'];
+
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
         if (!originalRequest) return Promise.reject(error);
 
+        // 401: Try token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
-            
             if (originalRequest.url?.includes('/api/auth/refresh-token')) {
                 return Promise.reject(error);
             }
@@ -48,12 +51,29 @@ api.interceptors.response.use(
             originalRequest._retry = true;
 
             try {
-                // Use the same axios instance so CSRF header is attached for this POST.
                 await api.post('/api/auth/refresh-token', {});
-                
                 return api(originalRequest);
             } catch (refreshError) {
                 return Promise.reject(refreshError);
+            }
+        }
+
+        // 403: Show upgrade modal if it's a plan limit error
+        if (error.response?.status === 403) {
+            const message = (
+                error.response?.data?.message ||
+                error.response?.data?.error ||
+                ''
+            ).toLowerCase();
+
+            const isPlanError = UPGRADE_KEYWORDS.some((kw) => message.includes(kw));
+
+            if (isPlanError) {
+                // Lazy import to avoid circular dependency
+                import('../context/PlanContext').then(({ triggerUpgradeModal }) => {
+                    triggerUpgradeModal();
+                });
+                return Promise.reject(error);
             }
         }
 
@@ -62,3 +82,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+

@@ -6,6 +6,7 @@ import { Search, Activity, Zap, Database, HardDrive, LayoutGrid } from 'lucide-r
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLayout } from '../context/LayoutContext';
+import { usePlan } from '../context/PlanContext';
 
 import DashboardShell from '../components/Dashboard/DashboardShell';
 import DashboardHeader from '../components/Dashboard/DashboardHeader';
@@ -21,12 +22,12 @@ import ReleaseBadge from '../components/Dashboard/ReleaseBadge';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
-  const [globalStats, setGlobalStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
   const { setHeaderContent } = useLayout();
+  const { fetchPlanData } = usePlan();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
@@ -45,15 +46,16 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [projectsRes, statsRes, activityRes] = await Promise.all([
+        const [projectsRes, activityRes] = await Promise.all([
           api.get('/api/projects'),
-          api.get('/api/analytics/stats'),
           api.get('/api/analytics/activity')
         ]);
         
         setProjects(projectsRes.data);
-        setGlobalStats(statsRes.data);
         setActivity(activityRes.data);
+
+        // fetchPlanData updates PlanContext which UsageQuota reads from
+        await fetchPlanData();
       } catch (err) {
         console.error(err);
         toast.error("Could not load dashboard data.");
@@ -63,7 +65,7 @@ export default function Dashboard() {
     };
 
     if (user) fetchData();
-  }, [user]);
+  }, [user, fetchPlanData]);
 
   // Inject search bar into global header
   useEffect(() => {
@@ -111,8 +113,6 @@ export default function Dashboard() {
   // Calculate global stats directly from projects array for 100% accuracy
   const totalDatabaseUsed = projects.reduce((acc, p) => acc + (p.databaseUsed || 0), 0);
   const totalStorageUsed = projects.reduce((acc, p) => acc + (p.storageUsed || 0), 0);
-  const totalCollectionsCount = projects.reduce((acc, p) => acc + (p.collectionsCount || 0), 0);
-  const totalRequests = globalStats?.totalRequests || 0;
 
   const formatSize = (bytes) => {
     if (!bytes) return '0 MB';
@@ -159,7 +159,7 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Activity size={12} /> API Requests
             </span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary)' }}>{totalRequests}</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary)' }}>—</span>
           </div>
         </div>
       )}
@@ -186,11 +186,7 @@ export default function Dashboard() {
         <div className="sticky-sidebar">
           {/* 1. Usage Quota (Technical Context) */}
           <SectionHeader title="Plan & Usage" />
-          <UsageQuota 
-            projectsCount={projects.length} 
-            collectionsCount={totalCollectionsCount}
-            limits={globalStats?.limits}
-          />
+          <UsageQuota />
 
           {/* 2. Onboarding (Helpful Context) */}
           <OnboardingChecklist 
