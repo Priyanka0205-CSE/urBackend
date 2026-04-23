@@ -28,6 +28,7 @@ jest.mock('@urbackend/common', () => {
             updateOne: jest.fn(),
         },
         isProjectStorageExternal: jest.fn(),
+        getBucket: jest.fn(() => 'dev-files'),
         __mockStorageFrom: mockStorageFrom, // expose for assertions
     };
 });
@@ -36,7 +37,7 @@ jest.mock('@urbackend/common', () => {
 // Import module under test after mocks
 // ---------------------------------------------------------------------------
 
-const { getStorage, Project, isProjectStorageExternal, __mockStorageFrom: mockStorageFrom } = require('@urbackend/common');
+const { getStorage, Project, isProjectStorageExternal,getBucket, __mockStorageFrom: mockStorageFrom } = require('@urbackend/common');
 const storageController = require('../controllers/storage.controller');
 
 // ---------------------------------------------------------------------------
