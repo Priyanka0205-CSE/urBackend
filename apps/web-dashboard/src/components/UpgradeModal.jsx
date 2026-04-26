@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Zap, Check, Loader2 } from 'lucide-react';
-import api from '../utils/api';
-import toast from 'react-hot-toast';
-import { useAuth } from '../context/AuthContext';
+// import api from '../utils/api';
+// import toast from 'react-hot-toast';
+// import { useAuth } from '../context/AuthContext';
 
 const FREE_FEATURES = [
     '1 Project',
@@ -29,12 +29,13 @@ const PRO_FEATURES = [
 ];
 
 export default function UpgradeModal({ isOpen, onClose }) {
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading] = useState(false); // setIsLoading removed to fix lint error (unused)
     const navigate = useNavigate();
-    const { user } = useAuth();
+    // const { user } = useAuth(); // Removed to fix lint error (unused)
 
     if (!isOpen) return null;
 
+    /*
     const loadRazorpayScript = () => {
         return new Promise((resolve) => {
             if (window.Razorpay) return resolve(true);
@@ -45,6 +46,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
             document.body.appendChild(script);
         });
     };
+    */
 
     const handleUpgrade = async () => {
         // BETA TOGGLE: Route users to manual request instead of Razorpay
@@ -52,6 +54,8 @@ export default function UpgradeModal({ isOpen, onClose }) {
         navigate('/request-pro');
         return;
 
+        /*
+        // Code below is disabled during Public Beta
         setIsLoading(true);
         try {
             const res = await api.post('/api/billing/checkout');
@@ -105,6 +109,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
             toast.error(msg);
             setIsLoading(false);
         }
+        */
     };
 
     return (
