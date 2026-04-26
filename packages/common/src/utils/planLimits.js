@@ -8,8 +8,9 @@ const PLAN_LIMITS = {
     mongoBytes: 52428800,        // 50MB
     mailPerMonth: 50,
     authUsersLimit: 1000,
-    byokEnabled: false,
-    byomEnabled: true,           // BYOM always free
+    byomEnabled: true,           // BYOM (MongoDB) always free
+    byosEnabled: false,          // BYOS (S3/R2) is Pro
+    byokEnabled: false,          // BYOK (API Keys) is Pro
     analyticsProEnabled: false,
     teamsEnabled: false,
     aiByokEnabled: false,
@@ -26,8 +27,9 @@ const PLAN_LIMITS = {
     mongoBytes: -1,              // Expected to use BYOM
     mailPerMonth: 1000,
     authUsersLimit: -1,
-    byokEnabled: true,
     byomEnabled: true,
+    byosEnabled: true,
+    byokEnabled: true,
     analyticsProEnabled: true,
     teamsEnabled: false,
     aiByokEnabled: true,         // OpenAI, Groq, Gemini

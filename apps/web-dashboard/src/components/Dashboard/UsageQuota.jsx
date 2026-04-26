@@ -52,7 +52,15 @@ const UsageQuota = () => {
           unit="Col"
         />
         <UsageProgressBar
-          label="Storage"
+          label="Database"
+          used={usage?.totalDatabaseUsed ?? 0}
+          limit={limits?.mongoBytes ?? 52428800}
+          formatValue={formatBytes}
+          unit=""
+          unlimited={limits?.mongoBytes === -1 || limits?.byomEnabled}
+        />
+        <UsageProgressBar
+          label="File Storage"
           used={usage?.totalStorageUsed ?? 0}
           limit={limits?.storageBytes ?? 20971520}
           formatValue={formatBytes}

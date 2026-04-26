@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware');
-const { attachDeveloper, checkProjectLimit, checkCollectionLimit, checkByokGate } = require('../middlewares/planEnforcement');
+const { attachDeveloper, checkProjectLimit, checkCollectionLimit, checkByokGate, checkByodGate } = require('../middlewares/planEnforcement');
 const {verifyEmail} = require('@urbackend/common')
 const multer = require('multer');
 const storage = multer.memoryStorage();
@@ -84,7 +84,7 @@ router.post('/:projectId/storage/delete', authMiddleware, verifyEmail, deleteFil
 router.delete('/:projectId', authMiddleware, verifyEmail, deleteProject);
 
 // PATCH REQ FOR UPDATE PROJECT
-router.patch('/:projectId', authMiddleware, updateProject);
+router.patch('/:projectId', authMiddleware, attachDeveloper, checkByokGate, updateProject);
 
 // MAIL TEMPLATES (Phase 2)
 router.get('/:projectId/mail/templates', authMiddleware, listMailTemplates);
@@ -98,7 +98,7 @@ router.delete('/:projectId/mail/templates/:templateId', authMiddleware, verifyEm
 router.patch('/:projectId/allowed-domains', authMiddleware, verifyEmail, updateAllowedDomains);
 
 // PATCH REQ FOR BYOD CONFIG
-router.patch('/:projectId/byod-config', authMiddleware, attachDeveloper, checkByokGate, updateExternalConfig);
+router.patch('/:projectId/byod-config', authMiddleware, attachDeveloper, checkByodGate, updateExternalConfig);
 
 // DELETE REQ FOR BYOD DB CONFIG
 router.delete('/:projectId/byod-config/db', authMiddleware, deleteExternalDbConfig);
@@ -119,7 +119,7 @@ router.get('/:projectId/analytics', authMiddleware, analytics);
 router.patch('/:projectId/auth/toggle', authMiddleware, verifyEmail, toggleAuth);
 
 // PATCH REQ FOR SOCIAL AUTH PROVIDERS
-router.patch('/:projectId/auth/providers', authMiddleware, verifyEmail, updateAuthProviders);
+router.patch('/:projectId/auth/providers', authMiddleware, attachDeveloper, verifyEmail, checkByokGate, updateAuthProviders);
 
 // PATCH REQ FOR COLLECTION RLS SETTINGS
 router.patch('/:projectId/collections/:collectionName/rls', authMiddleware, verifyEmail, updateCollectionRls);

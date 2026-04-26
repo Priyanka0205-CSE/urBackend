@@ -98,29 +98,39 @@ exports.checkCollectionLimit = async (req, res, next) => {
 };
 
 /**
- * Middleware to block BYOK features for Free tier users.
+ * Middleware to gate BYOD (Database/Storage) features.
+ * BYOM (MongoDB) is always FREE.
+ * BYOS (S3/R2/Supabase) is PRO.
  */
-exports.checkByokGate = async (req, res, next) => {
+exports.checkByodGate = async (req, res, next) => {
     try {
         // Admin always has access to all features
         if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
 
-        let customLimits = null;
-        const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
+        const { dbUri, storageUrl, storageKey } = req.body;
         
-        if (typeof rawProjectId === 'string' && mongoose.Types.ObjectId.isValid(rawProjectId)) {
-            const projectObjectId = new mongoose.Types.ObjectId(rawProjectId);
-            const project = await Project.findById(projectObjectId).select('customLimits').lean();
-            if (project) {
-                customLimits = project.customLimits;
-            }
-        }
+        // If they aren't trying to set external resources, let them pass
+        if (!dbUri && !storageUrl && !storageKey) return next();
 
         const effectivePlan = resolveEffectivePlan(req.developer);
+        
+        let customLimits = null;
+        const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
+        if (typeof rawProjectId === 'string' && mongoose.Types.ObjectId.isValid(rawProjectId)) {
+            const project = await Project.findById(rawProjectId).select('customLimits').lean();
+            if (project) customLimits = project.customLimits;
+        }
+
         const limits = getPlanLimits({ plan: effectivePlan, customLimits });
 
-        if (!limits.byokEnabled) {
-            return next(new AppError(403, 'External configuration (BYOK) is a Pro feature. Please upgrade to connect your own resources.'));
+        // 1. Check BYOM (Database) - This is true for free, so it usually passes
+        if (dbUri && !limits.byomEnabled) {
+            return next(new AppError(403, 'External Database (BYOM) is not enabled for your plan.'));
+        }
+
+        // 2. Check BYOS (Storage) - This is false for free, so it blocks
+        if ((storageUrl || storageKey) && !limits.byosEnabled) {
+            return next(new AppError(403, 'External Storage (BYOS) is a Pro feature. Please upgrade to connect your own S3/R2 bucket.'));
         }
 
         next();
@@ -130,29 +140,32 @@ exports.checkByokGate = async (req, res, next) => {
 };
 
 /**
- * Middleware to block BYOM features for users without access.
+ * Middleware to block BYOK features (API Keys) for Free tier users.
+ * Blocks if body contains resendApiKey or if it's an auth provider update.
  */
-exports.checkByomGate = async (req, res, next) => {
+exports.checkByokGate = async (req, res, next) => {
     try {
         // Admin always has access to all features
         if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
 
+        const { resendApiKey, github, google } = req.body;
+        
+        // If they aren't setting keys, let them pass
+        const isSettingKeys = resendApiKey || github?.clientSecret || google?.clientSecret;
+        if (!isSettingKeys) return next();
+
         let customLimits = null;
         const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
-        
         if (typeof rawProjectId === 'string' && mongoose.Types.ObjectId.isValid(rawProjectId)) {
-            const projectObjectId = new mongoose.Types.ObjectId(rawProjectId);
-            const project = await Project.findById(projectObjectId).select('customLimits').lean();
-            if (project) {
-                customLimits = project.customLimits;
-            }
+            const project = await Project.findById(rawProjectId).select('customLimits').lean();
+            if (project) customLimits = project.customLimits;
         }
 
         const effectivePlan = resolveEffectivePlan(req.developer);
         const limits = getPlanLimits({ plan: effectivePlan, customLimits });
 
-        if (!limits.byomEnabled) {
-            return next(new AppError(403, 'External configuration (BYOM) is a Pro feature. Please upgrade to connect your own resources.'));
+        if (!limits.byokEnabled) {
+            return next(new AppError(403, 'Bring Your Own Key (BYOK) is a Pro feature. Please upgrade to connect your own API keys or Auth providers.'));
         }
 
         next();
