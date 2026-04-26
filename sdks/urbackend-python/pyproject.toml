@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urbackend"
+version = "0.1.0"
+description = "Official Python SDK for urBackend — the instant Backend-as-a-Service for MongoDB."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "urBackend", email = "hello@bitbros.in" }
+]
+keywords = ["urbackend", "baas", "mongodb", "sdk", "backend-as-a-service"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-mock>=3.10",
+    "responses>=0.23",   # requests mock library
+    "python-dotenv",
+]
+
+[project.urls]
+Homepage       = "https://urbackend.bitbros.in"
+Documentation  = "https://docs.ub.bitbros.in"
+Repository     = "https://github.com/geturbackend/urBackend"
+"Bug Tracker"  = "https://github.com/geturbackend/urBackend/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

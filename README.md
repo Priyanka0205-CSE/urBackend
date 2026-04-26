@@ -57,10 +57,13 @@ urBackend is an **Open-Source BaaS** built to eliminate the complexity of backen
 Go from zero to a live backend in **under 60 seconds**.
 
 1.  **Initialize**: Create a project on the [Dashboard](https://urbackend.bitbros.in).
-2.  **Install**: `npm install @urbackend/sdk`
+2.  **Install SDK**: 
+    - **Node.js / TS:** `npm install @urbackend/sdk`
+    - **Python:** `pip install urbackend`
 3.  **Model**: Visually define your collections and schemas.
 4.  **Execute**: Push and pull data immediately using the SDK.
 
+### TypeScript / Node.js
 ```javascript
 import urBackend from '@urbackend/sdk';
 
@@ -76,6 +79,24 @@ const product = await client.db.insert('products', {
   name: 'Widget', 
   price: 9.99 
 });
+```
+
+### Python
+```python
+from urbackend import UrBackendClient
+
+# Initialize with your API key
+client = UrBackendClient(api_key='YOUR_API_KEY')
+
+# Read data (GET /api/data/products)
+products = client.db.get_all('products')
+
+# Write data (POST /api/data/products)
+# requires sk_live_* key or RLS enabled
+product = client.db.insert('products', {
+    'name': 'Widget',
+    'price': 9.99
+})
 ```
 
 ---
