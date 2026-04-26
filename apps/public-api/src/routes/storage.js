@@ -17,8 +17,8 @@ const upload = multer({
 router.post('/upload', verifyApiKey, requireSecretKey, checkUsageLimits, upload.single('file'), uploadFile);
 
 // NEW: presigned URL flow (no multer)
-router.post('/upload-request', verifyApiKey, projectRateLimiter, requireSecretKey, requestUpload);
-router.post('/upload-confirm', verifyApiKey, projectRateLimiter, requireSecretKey, confirmUpload);
+router.post('/upload-request', verifyApiKey, projectRateLimiter, requireSecretKey, checkUsageLimits, requestUpload);
+router.post('/upload-confirm', verifyApiKey, projectRateLimiter, requireSecretKey, checkUsageLimits, confirmUpload);
 
 // DELETE REQ SINGLE FILE
 router.delete('/file', verifyApiKey, requireSecretKey, checkUsageLimits, deleteFile);

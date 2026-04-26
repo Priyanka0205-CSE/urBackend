@@ -92,8 +92,8 @@ router.patch('/:projectId', authMiddleware, attachDeveloper, checkByokGate, upda
 router.get('/:projectId/mail/templates', authMiddleware, listMailTemplates);
 router.get('/:projectId/mail/templates/global', authMiddleware, listGlobalMailTemplates);
 router.get('/:projectId/mail/templates/:templateId', authMiddleware, getMailTemplate);
-router.post('/:projectId/mail/templates', authMiddleware, verifyEmail, createMailTemplate);
-router.patch('/:projectId/mail/templates/:templateId', authMiddleware, verifyEmail, updateMailTemplate);
+router.post('/:projectId/mail/templates', authMiddleware, verifyEmail, attachDeveloper, checkMailTemplatesGate, createMailTemplate);
+router.patch('/:projectId/mail/templates/:templateId', authMiddleware, verifyEmail, attachDeveloper, checkMailTemplatesGate, updateMailTemplate);
 router.delete('/:projectId/mail/templates/:templateId', authMiddleware, verifyEmail, deleteMailTemplate);
 
 // PATCH REQ FOR ALLOWED DOMAINS

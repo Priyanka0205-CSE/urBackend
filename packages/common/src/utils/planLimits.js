@@ -1,41 +1,72 @@
 const PLAN_LIMITS = {
   free: {
-    maxProjects: 1,
-    maxCollections: 10,
-    reqPerDay: 5000,             // Advertised 5k, protected by Per-Minute limit
-    reqPerMinute: 60,            // Strict protection for free tier
-    storageBytes: 20971520,      // 20MB
-    mongoBytes: 52428800,        // 50MB
-    mailPerMonth: 50,
-    authUsersLimit: 1000,
-    byomEnabled: true,           // BYOM (MongoDB) always free
-    byosEnabled: false,          // BYOS (S3/R2) is Pro
-    byokEnabled: false,          // BYOK (API Keys) is Pro
+    // Projects & Collections
+    maxProjects: 1,          // was: 1
+    maxCollections: 5,       // was: 10 — tighter gate
+
+    // Requests
+    reqPerDay: 2000,         // was: 5000 — stronger push to Pro
+    reqPerMinute: 30,        // was: 60 — free feels slower
+
+    // Storage & DB
+    storageBytes: 10485760,  // was: 20MB → now 10MB
+    mongoBytes: 52428800,    // was: 50MB
+
+    // Auth
+    authUsersLimit: 200,     // was: 1000 — biggest change
+
+    // Mail
+    mailPerMonth: 25,        // was: 50 — half it
+    mailTemplatesEnabled: false,
+
+    // Webhooks
+    webhooksLimit: 0,        // was: 100 — REMOVE from free entirely
+    webhookRetryEnabled: false,
+
+    // BYOM/BYOS/BYOK
+    byomEnabled: true,       
+    byosEnabled: false,      
+    byokEnabled: false,      
+    aiByokEnabled: false,
+
+    // Features
     analyticsProEnabled: false,
     teamsEnabled: false,
-    aiByokEnabled: false,
-    webhooksLimit: 100,          // 100/month
-    webhookRetryEnabled: false,
-    mailTemplatesEnabled: false
   },
+
   pro: {
-    maxProjects: 10,
-    maxCollections: -1,          // Unlimited
-    reqPerDay: 50000,
-    reqPerMinute: 600,           // 10x higher than free
-    storageBytes: -1,            // Expected to use BYOS
-    mongoBytes: -1,              // Expected to use BYOM
-    mailPerMonth: 1000,
-    authUsersLimit: -1,
+    // Projects & Collections
+    maxProjects: 10,         
+    maxCollections: -1,      // unlimited
+
+    // Requests
+    reqPerDay: -1,           // UNLIMITED
+    reqPerMinute: 600,       
+
+    // Storage & DB
+    storageBytes: -1,        // BYOS enforced
+    mongoBytes: -1,          // BYOM enforced
+
+    // Auth
+    authUsersLimit: -1,      // unlimited
+
+    // Mail
+    mailPerMonth: 1000,      
+    mailTemplatesEnabled: true,
+
+    // Webhooks
+    webhooksLimit: -1,       // UNLIMITED
+    webhookRetryEnabled: true,
+
+    // BYOM/BYOS/BYOK
     byomEnabled: true,
     byosEnabled: true,
     byokEnabled: true,
+    aiByokEnabled: true,
+
+    // Features
     analyticsProEnabled: true,
     teamsEnabled: false,
-    aiByokEnabled: true,         // OpenAI, Groq, Gemini
-    webhooksLimit: 1000,         // 1000/month
-    webhookRetryEnabled: true,
-    mailTemplatesEnabled: true
   }
 };
 

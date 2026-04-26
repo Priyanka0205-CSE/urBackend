@@ -1,4 +1,4 @@
-const { Developer, Project, resolveEffectivePlan, getPlanLimits, AppError } = require('@urbackend/common');
+const { Developer, Project, resolveEffectivePlan, getPlanLimits, AppError, sanitizeObjectId } = require('@urbackend/common');
 const mongoose = require('mongoose');
 
 const attachDeveloper = async (req, res, next) => {
@@ -31,10 +31,13 @@ const checkProjectLimit = async (req, res, next) => {
 const checkCollectionLimit = async (req, res, next) => {
     try {
         if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
-        const projectId = req.body.projectId;
-        if (!projectId) return next(new AppError(400, 'projectId is required'));
-        const project = await Project.findOne({ _id: projectId, owner: req.developer._id });
+        
+        const cleanProjectId = sanitizeObjectId(req.body.projectId);
+        if (!cleanProjectId) return next(new AppError(400, 'Invalid or missing projectId'));
+
+        const project = await Project.findOne({ _id: cleanProjectId, owner: req.developer._id });
         if (!project) return next(new AppError(404, 'Project not found'));
+
         const effectivePlan = resolveEffectivePlan(req.developer);
         const limits = getPlanLimits({ plan: effectivePlan, customLimits: project.customLimits });
         if (limits.maxCollections === -1) return next();
@@ -50,10 +53,21 @@ const checkByodGate = async (req, res, next) => {
         if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
         const { dbUri, storageUrl, storageKey } = req.body;
         if (!dbUri && !storageUrl && !storageKey) return next();
+
+        const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
+        const cleanProjectId = sanitizeObjectId(rawProjectId);
+        
+        let customLimits = null;
+        if (cleanProjectId) {
+            const project = await Project.findById(cleanProjectId).select('customLimits').lean();
+            if (project) customLimits = project.customLimits;
+        }
+
         const effectivePlan = resolveEffectivePlan(req.developer);
-        const limits = getPlanLimits({ plan: effectivePlan });
-        if (dbUri && !limits.byomEnabled) return next(new AppError(403, 'BYOM is Pro'));
-        if ((storageUrl || storageKey) && !limits.byosEnabled) return next(new AppError(403, 'BYOS is Pro'));
+        const limits = getPlanLimits({ plan: effectivePlan, customLimits });
+
+        if (dbUri && !limits.byomEnabled) return next(new AppError(403, 'External Database (BYOM) is a Pro feature.'));
+        if ((storageUrl || storageKey) && !limits.byosEnabled) return next(new AppError(403, 'External Storage (BYOS) is a Pro feature.'));
         next();
     } catch (err) {
         next(err);
@@ -65,9 +79,72 @@ const checkByokGate = async (req, res, next) => {
         if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
         const { resendApiKey, github, google } = req.body;
         if (!resendApiKey && !github?.clientSecret && !google?.clientSecret) return next();
+
+        const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
+        const cleanProjectId = sanitizeObjectId(rawProjectId);
+
+        let customLimits = null;
+        if (cleanProjectId) {
+            const project = await Project.findById(cleanProjectId).select('customLimits').lean();
+            if (project) customLimits = project.customLimits;
+        }
+
         const effectivePlan = resolveEffectivePlan(req.developer);
-        const limits = getPlanLimits({ plan: effectivePlan });
-        if (!limits.byokEnabled) return next(new AppError(403, 'BYOK is Pro'));
+        const limits = getPlanLimits({ plan: effectivePlan, customLimits });
+
+        if (!limits.byokEnabled) return next(new AppError(403, 'Bring Your Own Key (BYOK) is a Pro feature. Please upgrade to continue.'));
+        next();
+    } catch (err) {
+        next(err);
+    }
+};
+
+const checkWebhookGate = async (req, res, next) => {
+    try {
+        if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
+
+        const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
+        const cleanProjectId = sanitizeObjectId(rawProjectId);
+
+        let customLimits = null;
+        if (cleanProjectId) {
+            const project = await Project.findById(cleanProjectId).select('customLimits').lean();
+            if (project) customLimits = project.customLimits;
+        }
+
+        const effectivePlan = resolveEffectivePlan(req.developer);
+        const limits = getPlanLimits({ plan: effectivePlan, customLimits });
+
+        if (limits.webhooksLimit === 0) {
+            return next(new AppError(403, 'Webhooks are a Pro feature. Please upgrade to create integrations.'));
+        }
+
+        next();
+    } catch (err) {
+        next(err);
+    }
+};
+
+const checkMailTemplatesGate = async (req, res, next) => {
+    try {
+        if (req.user?.isAdmin || req.user?.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) return next();
+
+        const rawProjectId = req.params.projectId || req.body.projectId || req.query.projectId;
+        const cleanProjectId = sanitizeObjectId(rawProjectId);
+
+        let customLimits = null;
+        if (cleanProjectId) {
+            const project = await Project.findById(cleanProjectId).select('customLimits').lean();
+            if (project) customLimits = project.customLimits;
+        }
+
+        const effectivePlan = resolveEffectivePlan(req.developer);
+        const limits = getPlanLimits({ plan: effectivePlan, customLimits });
+
+        if (!limits.mailTemplatesEnabled) {
+            return next(new AppError(403, 'Custom Mail Templates are a Pro feature. Please upgrade to customize your emails.'));
+        }
+
         next();
     } catch (err) {
         next(err);
@@ -79,5 +156,7 @@ module.exports = {
     checkProjectLimit,
     checkCollectionLimit,
     checkByodGate,
-    checkByokGate
+    checkByokGate,
+    checkWebhookGate,
+    checkMailTemplatesGate
 };

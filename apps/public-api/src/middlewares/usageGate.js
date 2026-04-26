@@ -5,7 +5,10 @@ const {
   getPlanLimits, 
   getDeveloperPlanCache, 
   setDeveloperPlanCache,
-  AppError 
+  AppError,
+  sanitizeObjectId,
+  getConnection,
+  getCompiledModel
 } = require('@urbackend/common');
 const { getDayKey, DEFAULT_DAILY_TTL_SECONDS, incrWithTtlAtomic } = require('../utils/usageCounter');
 
@@ -14,24 +17,25 @@ const { getDayKey, DEFAULT_DAILY_TTL_SECONDS, incrWithTtlAtomic } = require('../
  * Uses Redis cache to avoid DB hits on every public API request.
  */
 async function resolveDeveloperPlanContext(req) {
-    // Extract raw string ID — owner can be either a populated object or a raw ObjectId
     const rawOwner = req.project.owner;
     const developerId = (rawOwner && typeof rawOwner === 'object' && rawOwner._id)
         ? rawOwner._id.toString()
         : rawOwner.toString();
     
+    // Sanitize to prevent NoSQL injection if owner was somehow corrupted
+    const cleanDeveloperId = sanitizeObjectId(developerId);
+    if (!cleanDeveloperId) return { plan: 'free', legacyLimits: {} };
+
     // Try cache first
-    let cached = await getDeveloperPlanCache(developerId);
+    let cached = await getDeveloperPlanCache(cleanDeveloperId);
     if (cached) return cached;
 
     // Cache miss: Load from DB
-    const developer = await Developer.findById(developerId).select('plan planExpiresAt maxProjects maxCollections').lean();
+    const developer = await Developer.findById(cleanDeveloperId).select('plan planExpiresAt maxProjects maxCollections').lean();
     
     const context = {
         plan: developer?.plan || 'free',
         planExpiresAt: developer?.planExpiresAt || null,
-        // Only store the raw DB values, do NOT apply defaults here — 
-        // getPlanLimits handles merging with plan-tier defaults safely.
         legacyLimits: {
             maxProjects: developer?.maxProjects ?? null,
             maxCollections: developer?.maxCollections ?? null
@@ -39,7 +43,7 @@ async function resolveDeveloperPlanContext(req) {
     };
 
     // Store in cache (5 mins)
-    await setDeveloperPlanCache(developerId, context);
+    await setDeveloperPlanCache(cleanDeveloperId, context);
     return context;
 }
 
@@ -50,7 +54,6 @@ exports.checkUsageLimits = async (req, res, next) => {
     try {
         if (!req.project) return next();
 
-        // 1. Resolve Plan context
         const planContext = await resolveDeveloperPlanContext(req);
         const effectivePlan = resolveEffectivePlan(planContext);
 
@@ -60,39 +63,69 @@ exports.checkUsageLimits = async (req, res, next) => {
             legacyLimits: planContext.legacyLimits
         });
 
-        // Attach limits immediately so downstream sees them even if Redis fails
         req.planLimits = limits;
 
-        // 2. Per-Minute Limit (Server Protection)
-        // Key: project:min:req:{projectId}:{YYYY-MM-DD:HH:MM}
         const minKey = `project:usage:min:${req.project._id}:${new Date().toISOString().substring(0, 16)}`;
-        const minCount = await incrWithTtlAtomic(redis, minKey, 65); // 65s TTL
+        const minCount = await incrWithTtlAtomic(redis, minKey, 65);
 
         if (limits.reqPerMinute !== -1 && minCount > limits.reqPerMinute) {
             return next(new AppError(429, 'Rate limit exceeded (per minute). Please slow down or upgrade your plan.'));
         }
 
-        // 3. Daily Limit Enforcement (Atomic)
-        // Use existing key pattern from api_usage.js for consistency
         const day = getDayKey();
         const reqCountKey = `project:usage:req:count:${req.project._id}:${day}`;
-
-        // Atomically increment and check
         const newDailyCount = await incrWithTtlAtomic(redis, reqCountKey, DEFAULT_DAILY_TTL_SECONDS);
 
         if (limits.reqPerDay !== -1 && newDailyCount > limits.reqPerDay) {
-            // Rollback the increment
             await redis.decr(reqCountKey);
             return next(new AppError(429, 'Daily request limit reached. Upgrade your plan to increase limits.'));
         }
 
-        // Mark that we've already incremented so the logger skips duplicate increment
         req._dailyCountIncremented = true;
+        next();
+    } catch (err) {
+        console.error("Usage limit check failed:", err);
+        next();
+    }
+};
+
+/**
+ * Middleware to enforce Auth User limits (e.g., 200 for Free).
+ * Applied to signup and social auth routes.
+ */
+exports.checkAuthUsersLimit = async (req, res, next) => {
+    try {
+        if (!req.project) return next();
+
+        // 1. Resolve limits if not already attached by checkUsageLimits
+        if (!req.planLimits) {
+            const planContext = await resolveDeveloperPlanContext(req);
+            const effectivePlan = resolveEffectivePlan(planContext);
+            req.planLimits = getPlanLimits({
+                plan: effectivePlan,
+                customLimits: req.project.customLimits,
+                legacyLimits: planContext.legacyLimits
+            });
+        }
+
+        const limit = req.planLimits.authUsersLimit;
+        if (limit === -1) return next(); // Unlimited
+
+        // 2. Count existing users
+        const usersCol = req.project.collections.find(c => c.name === 'users');
+        if (!usersCol) return next();
+
+        const connection = await getConnection(req.project._id);
+        const Model = getCompiledModel(connection, usersCol, req.project._id, req.project.resources.db.isExternal);
+        
+        const count = await Model.countDocuments();
+        if (count >= limit) {
+            return next(new AppError(403, `User limit reached (${limit}). Please upgrade your plan to allow more users.`));
+        }
 
         next();
     } catch (err) {
-        // Fallback to next if redis fails to avoid blocking all traffic
-        console.error("Usage limit check failed:", err);
+        console.error("Auth user limit check failed:", err);
         next();
     }
 };

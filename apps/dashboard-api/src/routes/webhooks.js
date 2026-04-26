@@ -12,9 +12,10 @@ const {
   getDeliveries,
   testWebhook,
 } = require("../controllers/webhook.controller");
+const { attachDeveloper, checkWebhookGate } = require("../middlewares/planEnforcement");
 
 // Create webhook
-router.post("/:projectId/webhooks", authMiddleware, verifyEmail, createWebhook);
+router.post("/:projectId/webhooks", authMiddleware, verifyEmail, attachDeveloper, checkWebhookGate, createWebhook);
 
 // List all webhooks for a project
 router.get("/:projectId/webhooks", authMiddleware, getWebhooks);
@@ -23,7 +24,7 @@ router.get("/:projectId/webhooks", authMiddleware, getWebhooks);
 router.get("/:projectId/webhooks/:webhookId", authMiddleware, getWebhook);
 
 // Update webhook
-router.patch("/:projectId/webhooks/:webhookId", authMiddleware, verifyEmail, updateWebhook);
+router.patch("/:projectId/webhooks/:webhookId", authMiddleware, verifyEmail, attachDeveloper, checkWebhookGate, updateWebhook);
 
 // Delete webhook
 router.delete("/:projectId/webhooks/:webhookId", authMiddleware, verifyEmail, deleteWebhook);
@@ -32,6 +33,6 @@ router.delete("/:projectId/webhooks/:webhookId", authMiddleware, verifyEmail, de
 router.get("/:projectId/webhooks/:webhookId/deliveries", authMiddleware, getDeliveries);
 
 // Test webhook
-router.post("/:projectId/webhooks/:webhookId/test", authMiddleware, verifyEmail, testWebhook);
+router.post("/:projectId/webhooks/:webhookId/test", authMiddleware, verifyEmail, attachDeveloper, checkWebhookGate, testWebhook);
 
 module.exports = router;
