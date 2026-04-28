@@ -253,7 +253,7 @@ module.exports.getAllData = async (req, res) => {
         items: data,
         total,
         page: parseInt(req.query.page, 10) || 1,
-        limit: Math.min(parseInt(req.query.limit, 10) || 50, 100),
+        limit: Math.max(1, Math.min(parseInt(req.query.limit, 10) || 50, 100)),
       },
       message: "Data fetched successfully",
     });
